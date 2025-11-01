@@ -2,7 +2,43 @@
 
 ## ⚡ DEPLOY EN 5 MINUTOS
 
-### **OPCIÓN 1: Railway (Recomendado) 🚂**
+### **OPCIÓN 1: Render.com (100% Gratuito) 🌟**
+
+**¡LA MEJOR OPCIÓN! No requiere tarjeta de crédito**
+
+```bash
+# 1. Ve a https://render.com
+# 2. Conecta tu cuenta de GitHub
+# 3. Selecciona "New +" > "Web Service"
+# 4. Conecta tu repositorio: yapeproo
+# 5. Configura:
+#    - Name: yapepro-backend
+#    - Environment: Node
+#    - Build Command: npm install
+#    - Start Command: npm start
+#    - Plan: Free (0$/mes)
+```
+
+**Variables de entorno a configurar:**
+```
+NODE_ENV=production
+PORT=10000
+SUPABASE_URL=https://tvgryyxppqllcuyxbzsq.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2Z3J5eXhwcHFsbGN1eXhienNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxMjY4NjAsImV4cCI6MjA3MjcwMjg2MH0.OSTiqct9cuJ9y-KyJmQC-rGOLLfLI3geIhyZ9eaNLWo
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR2Z3J5eXhwcHFsbGN1eXhienNxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzEyNjg2MCwiZXhwIjoyMDcyNzAyODYwfQ.0vNLb4Q-0_ECqD-buHGFVpyibBmb8KVJZOXBtjOAPEk
+JWT_SECRET=tu_jwt_secret_seguro_aqui
+JWT_EXPIRES_IN=7d
+FIREBASE_PROJECT_ID=yapepro-f6e50
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@yapepro-f6e50.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCrcxMQFAAHaRw6\nmnAc5IonAg5ceOJ7Tem1muodhanZkTzTsGX5CGQk0OOPIieXv4aus4sUW4GzIEum\nKn3XEMyC/TJsT96qEW2ZMEH+xgIAT9Q9Hu1QFiY1J7Veq06jB+6nMbVLDj2UpXRb\n/aB4D3Krjvi4j8p1JRH9D6vSPrjwqVsPOsYoKJgtgL60oz0rxv1YfdSOVM2M0rSg\nMYxWrksotbFPKsTFk+iyxUK+kiGQEIP6lCFEv4wWFWd6MTg7Geq4607crmNDXFzJ\na/2kcY41QQczt33ZJc4tleZHE9bklscfPiaCFo9y1SNH/9WHxAqa8gMRqIxpTysx\n0W7RF5AVAgMBAAECggEAUxl6kt9uyCi9IvZ6ArcO8ys+9Lku5R71eS117gs8MRUB\nS4WDV3omt+V7doPSdu3BBOpHLf3QVpb/s7GCvvwIdDDvAKqRvRKncYl/Y1Jr4+TN\ndTaJRbkGmdr+QL19Zu3QUb95JMDpPiQXywKahbbPGLI6gZJIShFGr8apvETkdNiE\nPy1Ubh4nMIJe8DTHSWIhtfoiGkhE9WM7k3KAx3Mg9wiTe93BHZg7PBCqgq1qTRDE\nR2qKXhBH1LkqskjkHoHCig85nBnWP+qMj4Lf++Neh09Z5cLYSBS06CYs953NSRDq\nym+i/YBlGf/k8jxgC1aO7XOcSpjPlJuMC5vIxQ3jfQKBgQDvd9/vzlLVt6OmyH19\nFDrxycdUhaVnfQg7FzxaMaFN856gvXOCl9tFezWK2M1vJvMvD+9brZXgtr3GQ4N4\np69ZrobgJ+IrNC1qQb/C1zDz7Y3N7Zp+l/sMU7hptOSdPTDXVjKs6LQWRHLxQJxN\n3tJgyrxT2YIrg6jKT7JNa9HrYwKBgQC3SRqDFn7tb0hn69wPruUpsJxvo2DR1wU+\nG/DJIkmErlP+/RIBTKIrgOaZiztorFoQHSTZowlq287xTVguQ/pVgDQQWtA2qLRU\nw0yWXTPhxIN+3TFcv/Amo+61SQJJuZgdQq28NQtyB43w7Pv7tunso9btN4tuYoB0\naNDt28C8JwKBgBDlVFeHJzENE+7glnoMw1vr8LR1+YWjvMDuksOKXOczGS4eL9g2\n/rGYT97MDTKafO4FIc5GIR0Jx7oFaXFJ44VgWwPVzI9fzxSALxeAN2P+jtLIwO3N\nq1jjT0+mA7tUZe3Llye8A3jOu41qEZ0s64sIwuDnp9eKIo6jsODlipohAoGAZuud\nAJlkQu3nabuvAfuC4Ysz/RhwKMUmQ38rEba4M9I0ho4TSzl+IxGp6/ScMqX9mOjU\npYWAp0mxBh0ZdDll3Bc2pSxpmRfY03QrkI/br15LPLT2oA+Dyh7pz1ClAUM/oMat\nim7681g8o1pgETPgXaqO6Pv0xtJ3MWceU0LAEqcCgYAbkrH7gAuBj72IqfnEvynv\najPyk4rQ8+KtrP25FtfoNzTTLrJteXYpLh215xe3wkhLe12O8Uhj3FSvq7C5Ep75\nltm+lFo/bonmYbsJF7aO0NU+XttbXSXLDTenapfgGRWbXSfuciZIs6FZx8M21vQZ\nGx5cTbymoRCGBb9Sbz0xeg==\n-----END PRIVATE KEY-----\n"
+CORS_ORIGIN=*
+```
+
+**URL resultante:** `https://yapepro-backend.onrender.com`
+
+---
+
+### **OPCIÓN 2: Railway (Recomendado) 🚂**
 
 ```bash
 # 1. Instalar CLI
