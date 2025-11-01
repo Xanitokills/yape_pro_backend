@@ -20,7 +20,7 @@ railway init
 # 5. Agregar variables de entorno
 railway variables set NODE_ENV=production
 railway variables set PORT=3000
-railway variables set SUPABASE_URL=https://tuproyecto.supabase.co
+railway variables set SUPABASE_URL=https://tvgryyxppqllcuyxbzsq.supabase.co
 railway variables set SUPABASE_ANON_KEY=tu_anon_key
 railway variables set SUPABASE_SERVICE_KEY=tu_service_key
 railway variables set JWT_SECRET=$(openssl rand -base64 32)
