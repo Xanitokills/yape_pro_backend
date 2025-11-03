@@ -149,12 +149,21 @@ const notificationValidation = {
  */
 const workerValidation = {
   add: [
-    body('user_id')
-      .isUUID()
-      .withMessage('ID de usuario inválido'),
     body('store_id')
       .isUUID()
       .withMessage('ID de tienda inválido'),
+    body('full_name')
+      .trim()
+      .notEmpty()
+      .withMessage('El nombre completo es requerido')
+      .isLength({ min: 2, max: 255 })
+      .withMessage('El nombre debe tener entre 2 y 255 caracteres'),
+    body('phone')
+      .trim()
+      .notEmpty()
+      .withMessage('El teléfono es requerido')
+      .matches(/^[0-9]{9}$/)
+      .withMessage('El teléfono debe tener exactamente 9 dígitos'),
     body('position')
       .optional()
       .trim()

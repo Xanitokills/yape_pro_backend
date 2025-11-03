@@ -2,6 +2,18 @@
 const { supabase } = require('../config/database');
 
 /**
+ * Generar código de invitación único (formato: YP-XXXXXX)
+ */
+function generateInvitationCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin letras/números confusos
+  let code = 'YP-';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+/**
  * Obtener todos los trabajadores de una tienda
  * GET /api/workers?store_id=xxx
  */
@@ -80,19 +92,21 @@ async function getWorkers(req, res) {
 }
 
 /**
- * Agregar trabajador a una tienda
+ * Agregar trabajador a una tienda (NUEVO FLUJO - Sin crear usuario)
  * POST /api/workers
+ * Body: { store_id, full_name, phone, position? }
+ * Crea worker pendiente con código de invitación
  */
 async function addWorker(req, res) {
   try {
-    const { store_id, user_id, position } = req.body;
+    const { store_id, full_name, phone, position } = req.body;
     const ownerId = req.user.userId;
     const role = req.user.role;
     
-    if (!store_id || !user_id) {
+    if (!store_id || !full_name || !phone) {
       return res.status(400).json({
         error: 'Datos incompletos',
-        message: 'store_id y user_id son requeridos'
+        message: 'store_id, full_name y phone son requeridos'
       });
     }
     
@@ -116,82 +130,71 @@ async function addWorker(req, res) {
       });
     }
     
-    // Verificar que el usuario existe
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, role')
-      .eq('id', user_id)
-      .single();
-    
-    if (userError || !user) {
-      return res.status(404).json({
-        error: 'Usuario no encontrado',
-        message: 'El usuario que intentas agregar no existe'
-      });
-    }
-    
-    // Verificar que el usuario no es owner de otra tienda (opcional)
-    if (user.role === 'owner') {
-      return res.status(400).json({
-        error: 'Usuario inválido',
-        message: 'No puedes agregar a un dueño de tienda como trabajador'
-      });
-    }
-    
-    // Verificar si ya existe la relación
-    const { data: existing } = await supabase
+    // Verificar si ya existe un worker con ese teléfono en esta tienda
+    const { data: existingWorker } = await supabase
       .from('workers')
-      .select('id, is_active')
+      .select('id, is_active, registration_status')
       .eq('store_id', store_id)
-      .eq('user_id', user_id)
+      .eq('temp_phone', phone)
       .single();
     
-    if (existing) {
-      if (existing.is_active) {
+    if (existingWorker) {
+      if (existingWorker.registration_status === 'pending') {
         return res.status(409).json({
           error: 'Trabajador ya existe',
-          message: 'Este usuario ya es trabajador de esta tienda'
+          message: 'Ya existe un trabajador pendiente de registro con este teléfono'
         });
-      } else {
-        // Reactivar trabajador
-        const { data: worker, error: updateError } = await supabase
-          .from('workers')
-          .update({ is_active: true, position })
-          .eq('id', existing.id)
-          .select('*')
-          .single();
-        
-        if (updateError) throw updateError;
-        
-        return res.json({
-          success: true,
-          message: 'Trabajador reactivado exitosamente',
-          data: { worker }
+      } else if (existingWorker.is_active) {
+        return res.status(409).json({
+          error: 'Trabajador ya existe',
+          message: 'Este trabajador ya está registrado en esta tienda'
         });
       }
     }
     
-    // Crear nueva relación worker
+    // Generar código de invitación único
+    const invitationCode = generateInvitationCode();
+    
+    console.log('✅ Código de invitación generado:', invitationCode);
+    console.log('📝 Creando trabajador pendiente:', { full_name, phone, position });
+    
+    // Crear worker PENDIENTE (sin user_id aún)
     const { data: worker, error: createError } = await supabase
       .from('workers')
       .insert({
         store_id,
-        user_id,
-        position,
-        is_active: true
+        user_id: null, // Sin usuario aún
+        temp_full_name: full_name,
+        temp_phone: phone,
+        position: position || null,
+        is_active: true,
+        invitation_code: invitationCode,
+        registration_status: 'pending'
       })
       .select('*')
       .single();
     
     if (createError) {
-      console.error('Error al crear trabajador:', createError);
+      console.error('❌ Error al crear trabajador:', createError);
       throw createError;
     }
     
+    console.log('✅ Trabajador creado exitosamente:', worker.id);
+    
     res.status(201).json({
       success: true,
-      message: 'Trabajador agregado exitosamente',
-      data: { worker }
+      message: 'Trabajador agregado exitosamente. Comparte el código de invitación.',
+      data: { 
+        worker: {
+          id: worker.id,
+          full_name: worker.temp_full_name,
+          phone: worker.temp_phone,
+          position: worker.position,
+          invitation_code: worker.invitation_code,
+          registration_status: worker.registration_status
+        },
+        invitation_code: invitationCode
+      }
     });
     
   } catch (error) {
