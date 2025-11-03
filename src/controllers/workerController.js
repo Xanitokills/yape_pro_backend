@@ -51,7 +51,7 @@ async function getWorkers(req, res) {
       });
     }
     
-    // Obtener trabajadores con información del usuario
+    // Obtener trabajadores con información del usuario (o datos temporales)
     const { data: workers, error } = await supabase
       .from('workers')
       .select(`
@@ -59,6 +59,10 @@ async function getWorkers(req, res) {
         position,
         is_active,
         created_at,
+        temp_full_name,
+        temp_phone,
+        invitation_code,
+        registration_status,
         users:user_id (
           id,
           email,
@@ -74,11 +78,43 @@ async function getWorkers(req, res) {
       throw error;
     }
     
+    // Transformar datos: usar temp_* si no hay usuario, o datos de usuario si existe
+    const transformedWorkers = workers?.map(worker => {
+      // Si tiene usuario (registration_status = 'completed'), usar datos de usuario
+      if (worker.users && worker.registration_status === 'completed') {
+        return {
+          id: worker.id,
+          position: worker.position,
+          is_active: worker.is_active,
+          created_at: worker.created_at,
+          registration_status: worker.registration_status,
+          users: worker.users
+        };
+      } 
+      // Si es pendiente, crear objeto users con datos temporales
+      else {
+        return {
+          id: worker.id,
+          position: worker.position,
+          is_active: worker.is_active,
+          created_at: worker.created_at,
+          registration_status: worker.registration_status,
+          invitation_code: worker.invitation_code,
+          users: {
+            id: null,
+            email: null,
+            full_name: worker.temp_full_name,
+            phone: worker.temp_phone
+          }
+        };
+      }
+    }) || [];
+    
     res.json({
       success: true,
       data: {
-        workers: workers || [],
-        count: workers?.length || 0
+        workers: transformedWorkers,
+        count: transformedWorkers.length
       }
     });
     
