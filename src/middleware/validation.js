@@ -54,12 +54,27 @@ const authValidation = {
   
   login: [
     body('email')
+      .optional()
       .isEmail()
       .withMessage('Email inválido')
       .normalizeEmail(),
+    body('phone')
+      .optional()
+      .matches(/^[0-9]{9}$/)
+      .withMessage('Teléfono debe tener 9 dígitos'),
     body('password')
       .notEmpty()
       .withMessage('La contraseña es requerida'),
+    // Al menos email o phone debe estar presente
+    (req, res, next) => {
+      if (!req.body.email && !req.body.phone) {
+        return res.status(400).json({
+          error: 'Datos incompletos',
+          message: 'Debes proporcionar email o teléfono'
+        });
+      }
+      next();
+    },
     handleValidationErrors
   ]
 };

@@ -100,24 +100,31 @@ async function register(req, res) {
 /**
  * Inicio de sesión
  * POST /api/auth/login
+ * Body: { email OR phone, password }
  */
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, phone, password } = req.body;
     
-    if (!email || !password) {
+    if ((!email && !phone) || !password) {
       return res.status(400).json({
         error: 'Datos incompletos',
-        message: 'Email y contraseña son requeridos'
+        message: 'Email o teléfono y contraseña son requeridos'
       });
     }
     
-    // Buscar usuario por email
-    const { data: user, error } = await supabase
+    // Buscar usuario por email O teléfono
+    let query = supabase
       .from('users')
-      .select('id, email, password_hash, full_name, phone, role, is_active')
-      .eq('email', email.toLowerCase())
-      .single();
+      .select('id, email, password_hash, full_name, phone, role, is_active');
+    
+    if (email) {
+      query = query.eq('email', email.toLowerCase());
+    } else {
+      query = query.eq('phone', phone);
+    }
+    
+    const { data: user, error } = await query.single();
     
     if (error || !user) {
       return res.status(401).json({
@@ -384,11 +391,150 @@ async function registerFCMToken(req, res) {
   }
 }
 
+/**
+ * Registro de trabajador con código de invitación
+ * POST /api/auth/register-worker
+ * Body: { phone, invitation_code, password }
+ */
+async function registerWorker(req, res) {
+  try {
+    const { phone, invitation_code, password } = req.body;
+    
+    if (!phone || !invitation_code || !password) {
+      return res.status(400).json({
+        error: 'Datos incompletos',
+        message: 'Teléfono, código de invitación y contraseña son requeridos'
+      });
+    }
+    
+    console.log('🔍 Validando código de invitación:', invitation_code);
+    console.log('📱 Para teléfono:', phone);
+    
+    // Buscar worker con ese código de invitación
+    const { data: worker, error: workerError } = await supabase
+      .from('workers')
+      .select(`
+        id,
+        store_id,
+        temp_full_name,
+        temp_phone,
+        position,
+        registration_status,
+        stores:store_id (
+          id,
+          name
+        )
+      `)
+      .eq('invitation_code', invitation_code)
+      .eq('registration_status', 'pending')
+      .single();
+    
+    if (workerError || !worker) {
+      console.log('❌ Código inválido o ya usado');
+      return res.status(404).json({
+        error: 'Código inválido',
+        message: 'El código de invitación no existe o ya fue usado'
+      });
+    }
+    
+    // Verificar que el teléfono coincida
+    if (worker.temp_phone !== phone) {
+      console.log('❌ Teléfono no coincide');
+      return res.status(400).json({
+        error: 'Teléfono no coincide',
+        message: 'El teléfono no corresponde a este código de invitación'
+      });
+    }
+    
+    console.log('✅ Código válido para:', worker.temp_full_name);
+    
+    // Generar email automático
+    const email = `worker${phone}@yape.temp`;
+    
+    // Verificar si el email ya existe (por si acaso)
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
+    
+    if (existingUser) {
+      return res.status(409).json({
+        error: 'Usuario ya existe',
+        message: 'Ya existe una cuenta con este teléfono'
+      });
+    }
+    
+    // Hashear contraseña
+    const password_hash = await bcrypt.hash(password, 10);
+    
+    // Crear usuario
+    const { data: newUser, error: userError } = await supabase
+      .from('users')
+      .insert({
+        email: email,
+        password_hash,
+        full_name: worker.temp_full_name,
+        phone: phone,
+        role: 'worker'
+      })
+      .select('id, email, full_name, phone, role')
+      .single();
+    
+    if (userError) {
+      console.error('❌ Error al crear usuario:', userError);
+      throw userError;
+    }
+    
+    console.log('✅ Usuario creado:', newUser.id);
+    
+    // Actualizar worker: asignar user_id y cambiar estado a 'completed'
+    const { error: updateError } = await supabase
+      .from('workers')
+      .update({
+        user_id: newUser.id,
+        registration_status: 'completed'
+      })
+      .eq('id', worker.id);
+    
+    if (updateError) {
+      console.error('❌ Error al actualizar worker:', updateError);
+      throw updateError;
+    }
+    
+    console.log('✅ Worker actualizado a completed');
+    
+    // Generar token JWT
+    const token = generateToken(newUser);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Registro completado exitosamente',
+      data: {
+        user: newUser,
+        store: {
+          id: worker.stores.id,
+          name: worker.stores.name
+        },
+        token
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en registerWorker:', error);
+    res.status(500).json({
+      error: 'Error al registrar trabajador',
+      message: 'No se pudo completar el registro. Por favor intenta nuevamente.'
+    });
+  }
+}
+
 module.exports = {
   register,
   login,
   getProfile,
   updateProfile,
   changePassword,
-  registerFCMToken
+  registerFCMToken,
+  registerWorker
 };

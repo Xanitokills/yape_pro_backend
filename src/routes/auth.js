@@ -8,6 +8,7 @@ const { authValidation } = require('../middleware/validation');
 // Rutas públicas
 router.post('/register', authValidation.register, authController.register);
 router.post('/login', authValidation.login, authController.login);
+router.post('/register-worker', authController.registerWorker);
 
 // Rutas protegidas (requieren autenticación)
 router.get('/me', authenticateToken, authController.getProfile);
