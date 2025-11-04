@@ -415,9 +415,88 @@ async function getNotificationStats(req, res) {
   }
 }
 
+/**
+ * Obtener última notificación para ESP32
+ * GET /api/notifications/latest?store_id=xxx&limit=4
+ */
+async function getLatestNotification(req, res) {
+  try {
+    const { store_id, limit = 1 } = req.query;
+    
+    if (!store_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'store_id requerido'
+      });
+    }
+    
+    const limitNum = Math.min(parseInt(limit), 10); // Máximo 10 notificaciones
+    
+    // Obtener las últimas notificaciones procesadas
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('store_id', store_id)
+      .eq('processed', true)
+      .order('notification_timestamp', { ascending: false })
+      .limit(limitNum);
+    
+    if (error) {
+      console.error('Error al obtener notificaciones:', error);
+      throw error;
+    }
+    
+    if (!notifications || notifications.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No hay notificaciones disponibles'
+      });
+    }
+    
+    // Si solo se pidió 1, devolver objeto único (compatibilidad)
+    if (limitNum === 1) {
+      res.json({
+        success: true,
+        data: {
+          id: notifications[0].id,
+          amount: notifications[0].amount,
+          sender_name: notifications[0].sender_name,
+          source: notifications[0].source,
+          timestamp: notifications[0].notification_timestamp,
+          workers_notified: notifications[0].workers_notified
+        }
+      });
+    } else {
+      // Devolver array de notificaciones
+      res.json({
+        success: true,
+        data: notifications.map(n => ({
+          id: n.id,
+          amount: n.amount,
+          sender_name: n.sender_name,
+          source: n.source,
+          timestamp: n.notification_timestamp,
+          workers_notified: n.workers_notified
+        })),
+        count: notifications.length
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error en getLatestNotification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener notificación',
+      message: error.message
+    });
+  }
+}
+
 module.exports = {
   getNotifications,
   createNotification,
   parseNotification,
-  getNotificationStats
+  getNotificationStats,
+  getLatestNotification
 };

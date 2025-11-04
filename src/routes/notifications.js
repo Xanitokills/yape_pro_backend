@@ -11,6 +11,9 @@ router.use(authenticateToken);
 // Obtener notificaciones de una tienda (query: ?store_id=xxx&limit=50&offset=0)
 router.get('/', notificationController.getNotifications);
 
+// Obtener última notificación para ESP32 (query: ?store_id=xxx)
+router.get('/latest', notificationController.getLatestNotification);
+
 // Obtener estadísticas de notificaciones (query: ?store_id=xxx&days=30)
 router.get('/stats', notificationController.getNotificationStats);
 
