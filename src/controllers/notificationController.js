@@ -155,11 +155,17 @@ async function createNotification(req, res) {
     
     const workerIds = workers?.map(w => w.user_id) || [];
     
-    // Obtener tokens FCM de los trabajadores
+    // ⭐ AGREGAR EL OWNER A LA LISTA DE USUARIOS A NOTIFICAR
+    const userIdsToNotify = [...workerIds];
+    if (store.owner_id && !userIdsToNotify.includes(store.owner_id)) {
+      userIdsToNotify.push(store.owner_id);
+    }
+    
+    // Obtener tokens FCM de los trabajadores + owner
     const { data: fcmTokens } = await supabase
       .from('fcm_tokens')
       .select('token, user_id')
-      .in('user_id', workerIds)
+      .in('user_id', userIdsToNotify)
       .eq('is_active', true);
     
     const tokens = fcmTokens?.map(t => t.token) || [];
@@ -182,6 +188,24 @@ async function createNotification(req, res) {
         });
         
         workersNotified = result.successCount || 0;
+        
+        // 🧹 Desactivar tokens inválidos
+        if (result.failureCount > 0 && result.responses) {
+          const invalidTokens = [];
+          result.responses.forEach((resp, idx) => {
+            if (!resp.success && resp.error?.code === 'messaging/registration-token-not-registered') {
+              invalidTokens.push(tokens[idx]);
+            }
+          });
+          
+          if (invalidTokens.length > 0) {
+            console.log(`🗑️ Desactivando ${invalidTokens.length} token(s) inválido(s)...`);
+            await supabase
+              .from('fcm_tokens')
+              .update({ is_active: false })
+              .in('token', invalidTokens);
+          }
+        }
       } catch (fcmError) {
         console.error('Error al enviar notificaciones FCM:', fcmError);
         // No lanzar error, solo registrar

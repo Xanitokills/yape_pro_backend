@@ -1,10 +1,11 @@
 -- ========================================
--- 🎫 MIGRACIÓN: Sistema de Códigos de Invitación
+-- 🚀 MIGRACIONES PENDIENTES
 -- ========================================
 -- EJECUTAR EN: Supabase Dashboard > SQL Editor
--- FECHA: Noviembre 2024
--- DESCRIPCIÓN: Modifica tabla workers para soportar códigos de invitación
---              Permite crear workers SIN usuario hasta que se registren
+
+-- ========================================
+-- MIGRACIÓN 1: Sistema de Códigos de Invitación
+-- ========================================
 
 -- 1. Hacer user_id nullable (permitir workers sin usuario aún)
 ALTER TABLE workers
@@ -57,20 +58,49 @@ UPDATE workers
 SET registration_status = 'completed' 
 WHERE user_id IS NOT NULL;
 
--- 8. Verificar estructura actualizada
-SELECT 
-    column_name, 
-    data_type, 
-    is_nullable,
-    column_default
-FROM information_schema.columns 
-WHERE table_name = 'workers'
-ORDER BY ordinal_position;
+-- ========================================
+-- MIGRACIÓN 2: Agregar columna raw_data a notifications
+-- ========================================
+-- PROPÓSITO: Almacenar datos adicionales de notificaciones en formato JSON
+--            Incluye flag 'simulated' para notificaciones de prueba
+
+-- 1. Agregar columna raw_data
+ALTER TABLE notifications 
+ADD COLUMN IF NOT EXISTS raw_data JSONB DEFAULT '{}';
+
+-- 2. Crear índice para búsquedas en JSONB
+CREATE INDEX IF NOT EXISTS idx_notifications_raw_data_simulated 
+ON notifications ((raw_data->>'simulated'));
+
+-- 3. Agregar comentario
+COMMENT ON COLUMN notifications.raw_data IS 
+'Datos adicionales de la notificación en formato JSON. Incluye: simulated (bool), format (int), original_message (string), etc.';
 
 -- ========================================
--- ✅ MIGRACIÓN COMPLETADA
+-- ✅ VERIFICACIÓN FINAL
 -- ========================================
--- Ahora puedes:
--- 1. Crear trabajadores desde la app
--- 2. Ver el código de invitación generado
--- 3. Compartir el código con el trabajador
+
+-- Verificar tabla workers
+SELECT 
+    'workers' as table_name,
+    column_name, 
+    data_type, 
+    is_nullable
+FROM information_schema.columns 
+WHERE table_name = 'workers'
+AND column_name IN ('invitation_code', 'registration_status', 'temp_full_name', 'temp_phone')
+ORDER BY column_name;
+
+-- Verificar tabla notifications
+SELECT 
+    'notifications' as table_name,
+    column_name, 
+    data_type,
+    column_default
+FROM information_schema.columns
+WHERE table_name = 'notifications' 
+AND column_name = 'raw_data';
+
+-- ========================================
+-- ✅ MIGRACIONES COMPLETADAS
+-- ========================================

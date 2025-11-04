@@ -1,12 +1,14 @@
 // src/app.js
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const notificationRoutes = require('./routes/notifications');
 const storeRoutes = require('./routes/stores');
 const workerRoutes = require('./routes/workers');
+const testRoutes = require('./routes/test');
 
 // Importar middleware de error
 const errorHandler = require('./middleware/errorHandler');
@@ -20,6 +22,12 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servir archivos estáticos (interfaz de testing) - solo en desarrollo
+if (process.env.NODE_ENV === 'development') {
+  app.use('/test-ui', express.static(path.join(__dirname, '../public')));
+  console.log('🎨 Interfaz de testing disponible en /test-ui/test-notifications.html');
+}
 
 // Logging middleware en desarrollo
 if (process.env.NODE_ENV === 'development') {
@@ -49,6 +57,7 @@ app.get('/', (req, res) => {
       notifications: '/api/notifications',
       stores: '/api/stores',
       workers: '/api/workers',
+      test: process.env.NODE_ENV === 'development' ? '/api/test' : 'disabled',
       health: '/health'
     },
     documentation: 'Ver BACKEND_SETUP_GUIDE.md para más información'
@@ -60,6 +69,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/workers', workerRoutes);
+
+// 🧪 Rutas de testing (solo en desarrollo)
+if (process.env.NODE_ENV === 'development') {
+  app.use('/api/test', testRoutes);
+  console.log('🧪 Test endpoints habilitados en /api/test');
+}
 
 // 404 - Ruta no encontrada
 app.use((req, res) => {

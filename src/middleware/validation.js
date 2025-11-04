@@ -54,12 +54,12 @@ const authValidation = {
   
   login: [
     body('email')
-      .optional()
+      .optional({ checkFalsy: true })
       .isEmail()
       .withMessage('Email inválido')
       .normalizeEmail(),
     body('phone')
-      .optional()
+      .optional({ checkFalsy: true })
       .matches(/^[0-9]{9}$/)
       .withMessage('Teléfono debe tener 9 dígitos'),
     body('password')

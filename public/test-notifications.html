@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yape Pro - Simulador de Notificaciones</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .main-content {
+            background: white;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            color: #333;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #38a169;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+        }
+
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #dd6b20;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .store-item {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .store-item:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .store-item.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .store-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .store-info {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-box.show {
+            display: block;
+        }
+
+        .result-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .result-value {
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .footer {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .format-preview {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+            border-left: 4px solid #667eea;
+        }
+
+        .format-preview div {
+            margin-bottom: 5px;
+        }
+
+        .format-preview strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🧪 Simulador de Notificaciones</h1>
+            <p>Prueba el sistema de notificaciones de Yape/Plin sin necesidad de pagos reales</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Alerts -->
+            <div id="alert" class="alert"></div>
+
+            <!-- Section 1: Login -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="badge">1</span>
+                    Autenticación
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="email" placeholder="owner@test.com" value="owner@test.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña</label>
+                        <input type="password" id="password" placeholder="password" value="password">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="login()">
+                    🔐 Iniciar Sesión
+                </button>
+            </div>
+
+            <!-- Section 2: Select Store -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="badge">2</span>
+                    Seleccionar Tienda
+                </div>
+                <button class="btn btn-secondary" onclick="loadStores()" id="loadStoresBtn">
+                    🏪 Cargar Tiendas
+                </button>
+                <div id="storesContainer" style="margin-top: 15px;"></div>
+            </div>
+
+            <!-- Section 3: Simulate Notification -->
+            <div class="section">
+                <div class="section-title">
+                    <span class="badge">3</span>
+                    Simular Notificación
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Monto (S/)</label>
+                        <input type="number" id="amount" placeholder="50.00" value="50.00" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del Remitente</label>
+                        <input type="text" id="senderName" placeholder="Juan Pérez" value="Juan Pérez">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fuente</label>
+                        <select id="source" onchange="updatePreview()">
+                            <option value="yape">Yape</option>
+                            <option value="plin">Plin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Formato de Mensaje</label>
+                        <select id="format" onchange="updatePreview()">
+                            <option value="1">Formato 1 - "Recibiste S/ XX.XX"</option>
+                            <option value="2">Formato 2 - "S/ XX.XX de Nombre"</option>
+                            <option value="3">Formato 3 - "Te yapeó S/ XX.XX"</option>
+                            <option value="4">Formato 4 - Solo monto</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="formatPreview" class="format-preview" style="display: none;"></div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="simulateNotification()" id="simulateBtn">
+                        📱 Simular Notificación
+                    </button>
+                    <button class="btn btn-warning" onclick="simulateBatch()" id="batchBtn">
+                        📊 Simular 5 Notificaciones (Batch)
+                    </button>
+                </div>
+
+                <div id="resultBox" class="result-box"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            Yape Pro Testing Tool v1.0 | Backend running on <strong id="backendUrl">http://localhost:3002</strong>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:3002';
+        let authToken = null;
+        let selectedStore = null;
+
+        // Show alert
+        function showAlert(message, type = 'info') {
+            const alert = document.getElementById('alert');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Login
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                showAlert('Por favor ingresa email y contraseña', 'error');
+                return;
+            }
+
+            try {
+                showAlert('Autenticando...', 'info');
+                const response = await fetch(`${BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    authToken = data.data.token;
+                    showAlert('✅ Login exitoso', 'success');
+                    document.getElementById('loadStoresBtn').disabled = false;
+                } else {
+                    showAlert(`❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`❌ Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        // Load stores
+        async function loadStores() {
+            if (!authToken) {
+                showAlert('Primero debes iniciar sesión', 'error');
+                return;
+            }
+
+            const container = document.getElementById('storesContainer');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Cargando tiendas...</div>';
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/test/stores`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const stores = data.data.stores;
+                    
+                    if (stores.length === 0) {
+                        container.innerHTML = '<p style="color: #999;">No hay tiendas disponibles</p>';
+                        return;
+                    }
+
+                    container.innerHTML = stores.map(store => `
+                        <div class="store-item" onclick="selectStore('${store.id}', '${store.name}')">
+                            <div class="store-name">🏪 ${store.name}</div>
+                            <div class="store-info">
+                                ID: ${store.id.substring(0, 8)}... | 
+                                Trabajadores: ${store.workers_count} | 
+                                Dueño: ${store.owner.name}
+                            </div>
+                        </div>
+                    `).join('');
+
+                    showAlert(`✅ ${stores.length} tienda(s) cargada(s)`, 'success');
+                } else {
+                    container.innerHTML = '<p style="color: #999;">Error al cargar tiendas</p>';
+                    showAlert(`❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                container.innerHTML = '<p style="color: #999;">Error de conexión</p>';
+                showAlert(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Select store
+        function selectStore(storeId, storeName) {
+            selectedStore = { id: storeId, name: storeName };
+            
+            // Update UI
+            document.querySelectorAll('.store-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            event.target.closest('.store-item').classList.add('selected');
+            
+            showAlert(`✅ Tienda seleccionada: ${storeName}`, 'success');
+            document.getElementById('simulateBtn').disabled = false;
+            document.getElementById('batchBtn').disabled = false;
+            updatePreview();
+        }
+
+        // Update preview
+        function updatePreview() {
+            if (!selectedStore) return;
+
+            const amount = document.getElementById('amount').value || '50.00';
+            const sender = document.getElementById('senderName').value || 'Juan Pérez';
+            const source = document.getElementById('source').value;
+            const format = parseInt(document.getElementById('format').value);
+            const sourceName = source === 'yape' ? 'Yape' : 'Plin';
+            const verb = source === 'yape' ? 'yapeó' : 'plineó';
+
+            let preview = '';
+
+            switch (format) {
+                case 1:
+                    preview = `
+                        <div><strong>Título:</strong> Recibiste un ${sourceName}</div>
+                        <div><strong>Texto:</strong> Recibiste S/ ${amount}</div>
+                        <div><strong>BigText:</strong> ${sender} te envió S/ ${amount} por ${sourceName}</div>
+                    `;
+                    break;
+                case 2:
+                    preview = `
+                        <div><strong>Título:</strong> Nuevo pago de ${sender}</div>
+                        <div><strong>Texto:</strong> S/ ${amount} de ${sender}</div>
+                        <div><strong>BigText:</strong> ¡${sender} te ${verb} S/ ${amount}! 💰</div>
+                    `;
+                    break;
+                case 3:
+                    preview = `
+                        <div><strong>Título:</strong> ${sender}</div>
+                        <div><strong>Texto:</strong> Te ${verb} S/ ${amount}</div>
+                        <div><strong>BigText:</strong> ${sender} te ${verb} S/ ${amount}. ¡Revisa tu saldo!</div>
+                    `;
+                    break;
+                case 4:
+                    preview = `
+                        <div><strong>Título:</strong> ${sourceName}</div>
+                        <div><strong>Texto:</strong> S/ ${amount}</div>
+                        <div><strong>BigText:</strong> Recibiste S/ ${amount} de ${sender}</div>
+                    `;
+                    break;
+            }
+
+            const previewEl = document.getElementById('formatPreview');
+            previewEl.innerHTML = preview;
+            previewEl.style.display = 'block';
+        }
+
+        // Simulate notification
+        async function simulateNotification() {
+            if (!authToken) {
+                showAlert('Primero debes iniciar sesión', 'error');
+                return;
+            }
+
+            if (!selectedStore) {
+                showAlert('Primero debes seleccionar una tienda', 'error');
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('amount').value);
+            const senderName = document.getElementById('senderName').value;
+            const source = document.getElementById('source').value;
+            const format = parseInt(document.getElementById('format').value);
+
+            try {
+                showAlert('📱 Simulando notificación...', 'info');
+                
+                const response = await fetch(`${BASE_URL}/api/test/simulate-notification`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        store_id: selectedStore.id,
+                        amount,
+                        sender_name: senderName,
+                        source,
+                        format
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('✅ Notificación simulada exitosamente', 'success');
+                    
+                    // Show results
+                    const resultBox = document.getElementById('resultBox');
+                    resultBox.innerHTML = `
+                        <div class="result-title">📊 Resultados de la Simulación</div>
+                        <div class="result-item">
+                            <span class="result-label">ID de Notificación:</span>
+                            <span class="result-value">${data.data.notification.id.substring(0, 12)}...</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Monto:</span>
+                            <span class="result-value">S/ ${data.data.notification.amount}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">De:</span>
+                            <span class="result-value">${data.data.notification.sender_name}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Fuente:</span>
+                            <span class="result-value">${data.data.notification.source.toUpperCase()}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Trabajadores Notificados:</span>
+                            <span class="result-value">${data.data.notification.workers_notified}</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Tokens FCM Disponibles:</span>
+                            <span class="result-value">${data.data.simulation.workers.tokens_available}</span>
+                        </div>
+                    `;
+                    resultBox.classList.add('show');
+                } else {
+                    showAlert(`❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Simulate batch
+        async function simulateBatch() {
+            if (!authToken || !selectedStore) {
+                showAlert('Primero debes iniciar sesión y seleccionar una tienda', 'error');
+                return;
+            }
+
+            if (!confirm('¿Deseas crear 5 notificaciones de prueba?')) {
+                return;
+            }
+
+            try {
+                showAlert('📊 Iniciando simulación batch...', 'info');
+                
+                const response = await fetch(`${BASE_URL}/api/test/simulate-batch`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        store_id: selectedStore.id,
+                        count: 5,
+                        min_amount: 10.00,
+                        max_amount: 200.00,
+                        sources: ['yape', 'plin'],
+                        delay_ms: 1000
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert(`✅ Batch iniciado: ${data.data.count} notificaciones se crearán en ${data.data.estimated_duration_seconds} segundos`, 'success');
+                } else {
+                    showAlert(`❌ Error: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        document.getElementById('loadStoresBtn').disabled = true;
+        document.getElementById('simulateBtn').disabled = true;
+        document.getElementById('batchBtn').disabled = true;
+    </script>
+</body>
+</html>

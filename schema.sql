@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     notification_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     processed BOOLEAN DEFAULT false,
     workers_notified INTEGER DEFAULT 0,
+    raw_data JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -82,6 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_store ON notifications(store_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_timestamp ON notifications(notification_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_processed ON notifications(processed);
 CREATE INDEX IF NOT EXISTS idx_notifications_source ON notifications(source);
+CREATE INDEX IF NOT EXISTS idx_notifications_raw_data_simulated ON notifications ((raw_data->>'simulated'));
 
 -- ========================================
 -- 5. TABLA DE TOKENS FCM

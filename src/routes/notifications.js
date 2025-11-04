@@ -17,6 +17,9 @@ router.get('/stats', notificationController.getNotificationStats);
 // Parsear notificación desde texto
 router.post('/parse', notificationController.parseNotification);
 
+// Crear notificación desde app (cualquier usuario autenticado puede crear)
+router.post('/create', notificationController.createNotification);
+
 // Crear y enviar notificación (owner y super_admin)
 router.post(
   '/',
