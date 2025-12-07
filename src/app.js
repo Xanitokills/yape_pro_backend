@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const notificationRoutes = require('./routes/notifications');
 const storeRoutes = require('./routes/stores');
 const workerRoutes = require('./routes/workers');
+const verificationRoutes = require('./routes/verification');
 const testRoutes = require('./routes/test');
 
 // Importar middleware de error
@@ -57,6 +58,7 @@ app.get('/', (req, res) => {
       notifications: '/api/notifications',
       stores: '/api/stores',
       workers: '/api/workers',
+      verify: '/api/verify',
       test: process.env.NODE_ENV === 'development' ? '/api/test' : 'disabled',
       health: '/health'
     },
@@ -69,6 +71,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/workers', workerRoutes);
+app.use('/api/verify', verificationRoutes);
 
 // 🧪 Rutas de testing (solo en desarrollo)
 if (process.env.NODE_ENV === 'development') {

@@ -24,7 +24,7 @@ function generateToken(user) {
  */
 async function register(req, res) {
   try {
-    const { email, password, full_name, phone, role = 'worker' } = req.body;
+    const { email, password, full_name, phone, role = 'worker', verification_token } = req.body;
     
     // Validaciones básicas (el middleware de validación ya hace la mayoría)
     if (!email || !password || !full_name) {
@@ -34,18 +34,93 @@ async function register(req, res) {
       });
     }
     
+    // Para owners, el teléfono es OBLIGATORIO (evita múltiples cuentas free)
+    if (role === 'owner' && !phone) {
+      return res.status(400).json({
+        error: 'Teléfono requerido',
+        message: 'El número de teléfono es obligatorio para crear una cuenta'
+      });
+    }
+    
+    // Limpiar teléfono
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
+    
+    // Para owners, verificar que el teléfono esté verificado con Firebase
+    if (role === 'owner' && cleanPhone) {
+      // Verificar token de Firebase
+      if (!verification_token) {
+        return res.status(400).json({
+          error: 'Verificación requerida',
+          message: 'Debes verificar tu número de teléfono antes de registrarte'
+        });
+      }
+      
+      try {
+        // Verificar el token de Firebase
+        const admin = require('firebase-admin');
+        const decodedToken = await admin.auth().verifyIdToken(verification_token);
+        
+        // Extraer el teléfono del token de Firebase
+        const firebasePhone = decodedToken.phone_number;
+        
+        if (!firebasePhone) {
+          return res.status(400).json({
+            error: 'Verificación inválida',
+            message: 'El token no contiene información de teléfono verificado'
+          });
+        }
+        
+        // Comparar números (limpiar el de Firebase también)
+        const firebasePhoneClean = firebasePhone.replace(/\D/g, '');
+        const expectedPhone = cleanPhone.startsWith('51') ? cleanPhone : `51${cleanPhone}`;
+        
+        if (!firebasePhoneClean.endsWith(cleanPhone) && firebasePhoneClean !== expectedPhone) {
+          console.log(`❌ Teléfono no coincide: Firebase=${firebasePhoneClean}, Esperado=${expectedPhone}`);
+          return res.status(400).json({
+            error: 'Verificación inválida',
+            message: 'El número verificado no corresponde al ingresado'
+          });
+        }
+        
+        console.log(`✅ Teléfono verificado con Firebase: ${firebasePhone}`);
+        
+      } catch (firebaseError) {
+        console.error('Error verificando token Firebase:', firebaseError);
+        return res.status(400).json({
+          error: 'Verificación expirada',
+          message: 'El token de verificación ha expirado o es inválido. Verifica tu número nuevamente.'
+        });
+      }
+    }
+    
     // Verificar si el email ya existe
-    const { data: existing } = await supabase
+    const { data: existingEmail } = await supabase
       .from('users')
       .select('id')
       .eq('email', email.toLowerCase())
       .single();
     
-    if (existing) {
+    if (existingEmail) {
       return res.status(409).json({
         error: 'Email ya registrado',
         message: 'Ya existe una cuenta con este email'
       });
+    }
+    
+    // Verificar si el teléfono ya existe (para evitar múltiples cuentas free)
+    if (cleanPhone) {
+      const { data: existingPhone } = await supabase
+        .from('users')
+        .select('id')
+        .eq('phone', cleanPhone)
+        .single();
+      
+      if (existingPhone) {
+        return res.status(409).json({
+          error: 'Teléfono ya registrado',
+          message: 'Ya existe una cuenta con este número de teléfono'
+        });
+      }
     }
     
     // Hashear contraseña
@@ -58,7 +133,7 @@ async function register(req, res) {
         email: email.toLowerCase(),
         password_hash,
         full_name,
-        phone,
+        phone: cleanPhone,
         role
       })
       .select('id, email, full_name, phone, role, created_at')
