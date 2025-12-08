@@ -282,9 +282,40 @@ async function getProfile(req, res) {
       });
     }
     
+    // Si es owner, obtener información de su tienda
+    let store = null;
+    if (user.role === 'owner') {
+      const { data: storeData } = await supabase
+        .from('stores')
+        .select('id, name, description, address, phone, is_active')
+        .eq('owner_id', user.id)
+        .single();
+      
+      store = storeData;
+    }
+    
+    // Si es worker, obtener la tienda donde trabaja
+    if (user.role === 'worker') {
+      const { data: workerData } = await supabase
+        .from('workers')
+        .select('stores(id, name, description, address, phone, is_active)')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
+      
+      store = workerData?.stores;
+    }
+    
     res.json({
       success: true,
-      data: { user }
+      data: { 
+        user,
+        store,
+        subscription: {
+          plan: 'Free',
+          status: 'active'
+        }
+      }
     });
     
   } catch (error) {

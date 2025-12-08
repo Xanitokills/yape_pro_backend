@@ -7,19 +7,33 @@
 
 /**
  * Parsear notificación de Yape
+ * Ejemplo: "Confirmación de Pago Yape! SANDRO ANTHONIONY SAAVEDRA CASTRO te envió un pago por S/ 1"
  * Ejemplo: "Recibiste S/ 50.00 de Juan Perez via Yape"
  */
 function parseYape(text) {
   // Patrones comunes de Yape
   const patterns = [
+    // Nuevo formato: "NOMBRE te envió un pago por S/ MONTO"
+    /yape!\s+([^!]+?)\s+te\s+envió\s+un\s+pago\s+por\s+s\/?\s*(\d+(?:\.\d{2})?)/i,
+    // Formato antiguo
     /recibiste\s+s\/?\s*(\d+(?:\.\d{2})?)\s+de\s+([^\n]+?)(?:\s+via\s+yape)?/i,
     /yape.*?s\/?\s*(\d+(?:\.\d{2})?)\s+de\s+([^\n]+)/i,
     /(\d+(?:\.\d{2})?)\s+soles.*?de\s+([^\n]+)/i
   ];
   
-  for (const pattern of patterns) {
+  for (let i = 0; i < patterns.length; i++) {
+    const pattern = patterns[i];
     const match = text.match(pattern);
     if (match) {
+      // Para el nuevo formato, nombre y monto están invertidos
+      if (i === 0) {
+        return {
+          amount: parseFloat(match[2]),
+          sender: match[1].trim(),
+          source: 'yape'
+        };
+      }
+      // Para formatos antiguos
       return {
         amount: parseFloat(match[1]),
         sender: match[2].trim(),

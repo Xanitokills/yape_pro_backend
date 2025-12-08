@@ -9,6 +9,7 @@ const notificationRoutes = require('./routes/notifications');
 const storeRoutes = require('./routes/stores');
 const workerRoutes = require('./routes/workers');
 const verificationRoutes = require('./routes/verification');
+const dashboardRoutes = require('./routes/dashboard');
 const testRoutes = require('./routes/test');
 
 // Importar middleware de error
@@ -72,6 +73,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/verify', verificationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 🧪 Rutas de testing (solo en desarrollo)
 if (process.env.NODE_ENV === 'development') {
