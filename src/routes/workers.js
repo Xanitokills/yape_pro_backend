@@ -4,6 +4,7 @@ const router = express.Router();
 const workerController = require('../controllers/workerController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const { workerValidation, validateUUID } = require('../middleware/validation');
+const { checkEmployeeLimit } = require('../middleware/planLimits');
 
 // Todas las rutas requieren autenticación
 router.use(authenticateToken);
@@ -18,6 +19,7 @@ router.get('/search', workerController.searchUsers);
 router.post(
   '/',
   authorizeRoles('owner', 'super_admin'),
+  checkEmployeeLimit, // Verificar límite del plan
   workerValidation.add,
   workerController.addWorker
 );

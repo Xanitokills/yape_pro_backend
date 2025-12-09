@@ -10,6 +10,10 @@ const storeRoutes = require('./routes/stores');
 const workerRoutes = require('./routes/workers');
 const verificationRoutes = require('./routes/verification');
 const dashboardRoutes = require('./routes/dashboard');
+const paymentsRoutes = require('./routes/payments');
+const subscriptionRoutes = require('./routes/subscriptions');
+const adminRoutes = require('./routes/admin');
+const setupRoutes = require('./routes/setup');
 const testRoutes = require('./routes/test');
 
 // Importar middleware de error
@@ -60,6 +64,7 @@ app.get('/', (req, res) => {
       stores: '/api/stores',
       workers: '/api/workers',
       verify: '/api/verify',
+      payments: '/api/payments',
       test: process.env.NODE_ENV === 'development' ? '/api/test' : 'disabled',
       health: '/health'
     },
@@ -74,6 +79,10 @@ app.use('/api/stores', storeRoutes);
 app.use('/api/workers', workerRoutes);
 app.use('/api/verify', verificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/payments', paymentsRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/setup', setupRoutes); // ⚠️ ELIMINAR EN PRODUCCIÓN
 
 // 🧪 Rutas de testing (solo en desarrollo)
 if (process.env.NODE_ENV === 'development') {

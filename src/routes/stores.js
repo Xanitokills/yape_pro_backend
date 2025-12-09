@@ -4,6 +4,7 @@ const router = express.Router();
 const storeController = require('../controllers/storeController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 const { storeValidation, validateUUID } = require('../middleware/validation');
+const { checkStoreLimit } = require('../middleware/planLimits');
 
 // Todas las rutas requieren autenticación
 router.use(authenticateToken);
@@ -18,6 +19,7 @@ router.get('/:id', validateUUID('id'), storeController.getStoreById);
 router.post(
   '/',
   authorizeRoles('owner', 'super_admin'),
+  checkStoreLimit, // Verificar límite del plan
   storeValidation.create,
   storeController.createStore
 );

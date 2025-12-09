@@ -124,6 +124,19 @@ async function createNotification(req, res) {
         error: 'Acceso denegado'
       });
     }
+
+    // 🔥 VERIFICAR LÍMITE DE TRANSACCIONES DEL PLAN
+    const subscriptionService = require('../services/subscriptionService');
+    try {
+      await subscriptionService.recordTransaction(store.owner_id);
+    } catch (limitError) {
+      return res.status(403).json({
+        success: false,
+        error: 'PLAN_LIMIT_REACHED',
+        message: limitError.message,
+        upgradeRequired: true
+      });
+    }
     
     // Crear notificación en BD
     const { data: notification, error: createError } = await supabase

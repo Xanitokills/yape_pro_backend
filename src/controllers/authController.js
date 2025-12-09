@@ -217,7 +217,25 @@ async function login(req, res) {
     }
     
     // Verificar contraseña
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    let isPasswordValid = false;
+    
+    // Si el password_hash es 'supabase_auth', verificar con Supabase Auth
+    if (user.password_hash === 'supabase_auth') {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: password
+        });
+        
+        isPasswordValid = !authError && authData.user !== null;
+      } catch (authErr) {
+        console.error('Error en auth de Supabase:', authErr);
+        isPasswordValid = false;
+      }
+    } else {
+      // Verificar con bcrypt (método tradicional)
+      isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    }
     
     if (!isPasswordValid) {
       return res.status(401).json({
