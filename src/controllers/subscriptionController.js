@@ -4,16 +4,40 @@
 
 const subscriptionService = require('../services/subscriptionService');
 
+// 🔄 CACHÉ EN MEMORIA PARA PLANES (evitar consultas repetidas)
+let plansCache = null;
+let plansCacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
 /**
- * Obtener todos los planes disponibles
+ * Obtener todos los planes disponibles (con caché)
  */
 const getPlans = async (req, res) => {
   try {
+    const now = Date.now();
+    
+    // Verificar si el caché es válido
+    if (plansCache && plansCacheTimestamp && (now - plansCacheTimestamp) < CACHE_DURATION) {
+      console.log('📦 Sirviendo planes desde caché');
+      return res.json({
+        success: true,
+        data: plansCache,
+        cached: true
+      });
+    }
+
+    // Si no hay caché válido, obtener de la BD
+    console.log('🔄 Obteniendo planes desde base de datos');
     const plans = await subscriptionService.getAllPlans();
+
+    // Actualizar caché
+    plansCache = plans;
+    plansCacheTimestamp = now;
 
     res.json({
       success: true,
-      data: plans
+      data: plans,
+      cached: false
     });
   } catch (error) {
     console.error('Error al obtener planes:', error);

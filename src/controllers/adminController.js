@@ -13,72 +13,175 @@ const getAllUsers = async (req, res) => {
   try {
     const { plan, status, search, page = 1, limit = 50 } = req.query;
     
-    // Consultar directamente desde users con joins
-    let query = supabase
+    console.log('📊 getAllUsers llamado con:', { plan, status, search, page, limit });
+    
+    // Primero obtener los usuarios owners
+    let ownerQuery = supabase
       .from('users')
-      .select(`
-        id,
-        email,
-        full_name,
-        phone,
-        role,
-        subscription_plan_id,
-        subscription_status,
-        subscription_started_at,
-        subscription_expires_at,
-        max_stores,
-        max_employees,
-        max_transactions_monthly,
-        is_active,
-        created_at,
-        subscription_plans:subscription_plan_id (
-          name,
-          price_monthly,
-          badge,
-          color
-        )
-      `, { count: 'exact' });
+      .select('*')
+      .eq('role', 'owner');
 
-    // Filtros
-    if (plan) {
-      query = query.eq('subscription_plan_id', plan);
-    }
-    
-    if (status) {
-      query = query.eq('subscription_status', status);
-    }
-    
+    // Filtros para owners
+    if (plan) ownerQuery = ownerQuery.eq('subscription_plan_id', plan);
+    if (status) ownerQuery = ownerQuery.eq('subscription_status', status);
     if (search) {
-      query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);
+      ownerQuery = ownerQuery.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);
+    }
+    
+    ownerQuery = ownerQuery.order('created_at', { ascending: false });
+
+    const { data: owners, error: ownersError } = await ownerQuery;
+
+    if (ownersError) {
+      console.error('❌ Error en query owners:', ownersError);
+      throw ownersError;
     }
 
-    // Paginación
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    query = query.range(offset, offset + parseInt(limit) - 1);
+    console.log('✅ Owners encontrados:', owners?.length || 0);
+
+    // Obtener todas las tiendas de los owners
+    const ownerIds = owners.map(o => o.id);
+    const { data: stores, error: storesError } = await supabase
+      .from('stores')
+      .select('id, name, owner_id')
+      .in('owner_id', ownerIds);
+
+    if (storesError) {
+      console.error('❌ Error en query stores:', storesError);
+      throw storesError;
+    }
+
+    // Obtener todos los trabajadores de esas tiendas
+    const storeIds = stores?.map(s => s.id) || [];
+    let workersData = [];
     
-    query = query.order('created_at', { ascending: false });
+    if (storeIds.length > 0) {
+      const { data: workers, error: workersError } = await supabase
+        .from('workers')
+        .select(`
+          *,
+          users!workers_user_id_fkey (
+            id,
+            email,
+            full_name,
+            phone,
+            role,
+            subscription_plan_id,
+            subscription_status,
+            created_at
+          )
+        `)
+        .in('store_id', storeIds);
 
-    const { data, error, count } = await query;
+      if (workersError) {
+        console.error('❌ Error en query workers:', workersError);
+      } else {
+        workersData = workers || [];
+      }
+    }
 
-    if (error) throw error;
+    // Obtener los planes para agregar información
+    const { data: plans, error: plansError } = await supabase
+      .from('subscription_plans')
+      .select('*');
 
+    if (plansError) {
+      console.error('❌ Error en query planes:', plansError);
+      throw plansError;
+    }
+
+    // Obtener transacciones actuales del mes para cada owner
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1;
+    const currentYear = currentDate.getFullYear();
+
+    const { data: usageData, error: usageError } = await supabase
+      .from('usage_tracking')
+      .select('user_id, transactions_count')
+      .in('user_id', ownerIds)
+      .eq('month', currentMonth)
+      .eq('year', currentYear);
+
+    if (usageError) {
+      console.error('❌ Error en query usage_tracking:', usageError);
+    }
+
+    // Mapear owners con sus tiendas y trabajadores
+    const ownersWithWorkers = owners.map(owner => {
+      const plan = plans.find(p => p.id === owner.subscription_plan_id);
+      const ownerStores = stores?.filter(s => s.owner_id === owner.id) || [];
+      
+      // Obtener uso actual del owner
+      const usage = usageData?.find(u => u.user_id === owner.id);
+      const transactions_count = usage?.transactions_count || 0;
+      
+      // Obtener trabajadores de todas las tiendas del owner
+      const ownerWorkers = workersData
+        .filter(w => ownerStores.some(s => s.id === w.store_id))
+        .map(w => ({
+          user_id: w.users?.id,
+          id: w.users?.id,
+          email: w.users?.email,
+          full_name: w.users?.full_name,
+          phone: w.users?.phone,
+          role: w.users?.role || 'worker',
+          subscription_plan_id: w.users?.subscription_plan_id,
+          subscription_status: w.users?.subscription_status || 'active',
+          created_at: w.users?.created_at,
+          store_name: ownerStores.find(s => s.id === w.store_id)?.name,
+          position: w.position,
+          worker_id: w.id
+        }));
+
+      return {
+        user_id: owner.id,
+        id: owner.id,
+        email: owner.email,
+        full_name: owner.full_name,
+        phone: owner.phone,
+        role: owner.role,
+        subscription_plan_id: owner.subscription_plan_id,
+        subscription_status: owner.subscription_status,
+        subscription_started_at: owner.subscription_started_at,
+        subscription_expires_at: owner.subscription_expires_at,
+        is_active: owner.is_active,
+        created_at: owner.created_at,
+        transactions_count, // 📊 Agregar contador de transacciones
+        plan: plan ? {
+          name: plan.name,
+          price_monthly: plan.price_monthly,
+          badge: plan.badge,
+          color: plan.color
+        } : null,
+        max_stores: plan?.max_stores,
+        max_employees: plan?.max_employees,
+        max_transactions_monthly: plan?.max_transactions_monthly,
+        stores: ownerStores.map(s => ({ id: s.id, name: s.name })),
+        workers: ownerWorkers
+      };
+    });
+
+    // Calcular total para paginación (solo owners)
+    const total = owners.length;
+    
     res.json({
       success: true,
       data: {
-        users: data,
+        users: ownersWithWorkers,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: count,
-          totalPages: Math.ceil(count / parseInt(limit))
+          total: total,
+          totalPages: Math.ceil(total / parseInt(limit))
         }
       }
     });
   } catch (error) {
-    console.error('Error al obtener usuarios:', error);
+    console.error('❌ Error al obtener usuarios:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener la lista de usuarios'
+      message: 'Error al obtener la lista de usuarios',
+      error: error.message
     });
   }
 };
@@ -338,27 +441,61 @@ const getUserSubscriptionHistory = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const { data, error } = await supabase
+    console.log('📜 Obteniendo historial para usuario:', userId);
+
+    // Primero obtener el historial sin joins complejos
+    const { data: history, error: historyError } = await supabase
       .from('subscription_history')
-      .select(`
-        *,
-        plan:plan_id(name),
-        previous_plan:previous_plan_id(name)
-      `)
+      .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (historyError) {
+      console.error('❌ Error al obtener historial:', historyError);
+      throw historyError;
+    }
 
-    res.json({
-      success: true,
-      data
-    });
+    console.log('✅ Historial encontrado:', history?.length || 0);
+
+    // Si hay historial, obtener información de los planes
+    if (history && history.length > 0) {
+      const planIds = [...new Set([
+        ...history.map(h => h.plan_id).filter(Boolean),
+        ...history.map(h => h.previous_plan_id).filter(Boolean)
+      ])];
+
+      const { data: plans, error: plansError } = await supabase
+        .from('subscription_plans')
+        .select('id, name')
+        .in('id', planIds);
+
+      if (plansError) {
+        console.error('❌ Error al obtener planes:', plansError);
+      }
+
+      // Mapear los datos con información de planes
+      const historyWithPlans = history.map(record => ({
+        ...record,
+        plan: plans?.find(p => p.id === record.plan_id),
+        previous_plan: plans?.find(p => p.id === record.previous_plan_id)
+      }));
+
+      res.json({
+        success: true,
+        data: historyWithPlans
+      });
+    } else {
+      res.json({
+        success: true,
+        data: []
+      });
+    }
   } catch (error) {
-    console.error('Error al obtener historial:', error);
+    console.error('❌ Error al obtener historial:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener el historial de suscripciones'
+      message: 'Error al obtener el historial de suscripciones',
+      error: error.message
     });
   }
 };
