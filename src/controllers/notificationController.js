@@ -168,11 +168,17 @@ async function createNotification(req, res) {
     
     const workerIds = workers?.map(w => w.user_id) || [];
     
+    console.log(`👷 Workers encontrados: ${workerIds.length}`);
+    workerIds.forEach((id, idx) => console.log(`   Worker ${idx + 1}: ${id}`));
+    
     // ⭐ AGREGAR EL OWNER A LA LISTA DE USUARIOS A NOTIFICAR
     const userIdsToNotify = [...workerIds];
     if (store.owner_id && !userIdsToNotify.includes(store.owner_id)) {
       userIdsToNotify.push(store.owner_id);
     }
+    
+    console.log(`📢 Total usuarios a notificar: ${userIdsToNotify.length}`);
+    userIdsToNotify.forEach((id, idx) => console.log(`   ${idx + 1}. ${id}`));
     
     // Obtener tokens FCM de los trabajadores + owner
     const { data: fcmTokens } = await supabase
@@ -183,10 +189,15 @@ async function createNotification(req, res) {
     
     const tokens = fcmTokens?.map(t => t.token) || [];
     
+    console.log(`📱 Tokens FCM encontrados: ${tokens.length}`);
+    console.log(`👥 Usuarios a notificar: ${userIdsToNotify.length}`);
+    
     // Enviar notificaciones push
     let workersNotified = 0;
     if (tokens.length > 0) {
       try {
+        console.log(`📤 Enviando notificación a ${tokens.length} dispositivo(s)...`);
+        
         const result = await fcmService.sendNotification({
           tokens,
           title: `💰 Nuevo pago en ${store.name}`,
@@ -200,6 +211,9 @@ async function createNotification(req, res) {
           }
         });
         
+        console.log(`✅ Enviados exitosamente: ${result.successCount}`);
+        console.log(`❌ Fallidos: ${result.failureCount}`);
+        
         workersNotified = result.successCount || 0;
         
         // 🧹 Desactivar tokens inválidos
@@ -208,6 +222,7 @@ async function createNotification(req, res) {
           result.responses.forEach((resp, idx) => {
             if (!resp.success && resp.error?.code === 'messaging/registration-token-not-registered') {
               invalidTokens.push(tokens[idx]);
+              console.log(`❌ Token inválido [${idx}]: ${tokens[idx].substring(0, 20)}...`);
             }
           });
           
@@ -217,7 +232,10 @@ async function createNotification(req, res) {
               .from('fcm_tokens')
               .update({ is_active: false })
               .in('token', invalidTokens);
+            console.log('✅ Tokens inválidos desactivados');
           }
+        } else if (result.failureCount === 0) {
+          console.log('✅ Todos los tokens son válidos');
         }
       } catch (fcmError) {
         console.error('Error al enviar notificaciones FCM:', fcmError);
