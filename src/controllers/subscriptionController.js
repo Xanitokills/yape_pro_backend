@@ -29,7 +29,7 @@ const getPlans = async (req, res) => {
  */
 const getMySubscription = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const subscription = await subscriptionService.getUserSubscription(userId);
 
     res.json({
@@ -50,7 +50,7 @@ const getMySubscription = async (req, res) => {
  */
 const getUsageStats = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const stats = await subscriptionService.getUsageStats(userId);
 
     res.json({
@@ -71,7 +71,7 @@ const getUsageStats = async (req, res) => {
  */
 const changePlan = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { planId, notes } = req.body;
 
     if (!planId) {
@@ -102,7 +102,7 @@ const changePlan = async (req, res) => {
  */
 const checkLimit = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { limitType } = req.params;
 
     if (!['stores', 'employees', 'transactions'].includes(limitType)) {

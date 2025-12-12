@@ -10,7 +10,7 @@ const subscriptionService = require('../services/subscriptionService');
 const checkPlanLimit = (limitType) => {
   return async (req, res, next) => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
 
       if (!userId) {
         return res.status(401).json({

@@ -208,7 +208,7 @@ class SubscriptionService {
       const year = new Date().getFullYear();
       const month = new Date().getMonth() + 1;
 
-      // Obtener tracking del mes actual
+      // Obtener tracking del mes actual para transacciones
       const { data: usage, error: usageError } = await supabase
         .from('usage_tracking')
         .select('*')
@@ -219,14 +219,44 @@ class SubscriptionService {
 
       if (usageError && usageError.code !== 'PGRST116') throw usageError;
 
+      // Obtener conteo REAL de tiendas activas
+      const { count: storesCount, error: storesError } = await supabase
+        .from('stores')
+        .select('*', { count: 'exact', head: true })
+        .eq('owner_id', userId)
+        .eq('is_active', true);
+
+      if (storesError) throw storesError;
+
+      // Obtener conteo REAL de empleados activos
+      const { data: stores } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('owner_id', userId)
+        .eq('is_active', true);
+
+      const storeIds = stores?.map(s => s.id) || [];
+      let employeesCount = 0;
+
+      if (storeIds.length > 0) {
+        const { count, error: workersError } = await supabase
+          .from('workers')
+          .select('*', { count: 'exact', head: true })
+          .in('store_id', storeIds)
+          .eq('is_active', true);
+
+        if (workersError) throw workersError;
+        employeesCount = count || 0;
+      }
+
       // Obtener límites del plan
       const subscription = await this.getUserSubscription(userId);
 
       return {
         current: {
           transactions: usage?.transactions_count || 0,
-          stores: usage?.stores_count || 0,
-          employees: usage?.employees_count || 0
+          stores: storesCount || 0,
+          employees: employeesCount
         },
         limits: {
           transactions: subscription.max_transactions_monthly,

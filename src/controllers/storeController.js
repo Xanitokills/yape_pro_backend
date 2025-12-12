@@ -10,9 +10,21 @@ async function getStores(req, res) {
     const userId = req.user.userId;
     const role = req.user.role;
     
+    // Para workers, incluir datos del owner; para owners, solo datos de tienda
+    const selectFields = role === 'worker' 
+      ? `
+        *,
+        users:owner_id (
+          id,
+          full_name,
+          phone
+        )
+      `
+      : '*';
+    
     let query = supabase
       .from('stores')
-      .select('*')
+      .select(selectFields)
       .order('created_at', { ascending: false });
     
     // Si es owner, solo ver sus tiendas
