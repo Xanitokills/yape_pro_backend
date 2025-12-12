@@ -50,7 +50,7 @@ INSERT INTO subscription_plans (
     'Perfecto para empezar',
     0.00,
     1,
-    0,
+    1,
     30,
     false, false, false, false, false, false,
     1, NULL, '#64748B', 'bolt'
