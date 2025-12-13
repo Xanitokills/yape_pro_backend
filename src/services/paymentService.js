@@ -445,6 +445,75 @@ exports.checkUpgradeStatus = async (userId, reference) => {
 };
 
 /**
+ * Completar pago de upgrade (llamado desde la app después del éxito en WebView)
+ * Actualiza el estado del pago y la suscripción del usuario
+ */
+exports.completeUpgradePayment = async (userId, reference) => {
+  try {
+    // Buscar el pago
+    const { data: payment, error: fetchError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('order_id', reference)
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError || !payment) {
+      console.error('❌ Pago no encontrado:', reference);
+      throw new Error('Pago no encontrado');
+    }
+
+    // Si ya está completado, solo actualizamos la suscripción
+    if (payment.status !== 'completed') {
+      // Actualizar estado del pago
+      const { error: updateError } = await supabase
+        .from('payments')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_id', reference);
+
+      if (updateError) {
+        console.error('❌ Error actualizando pago:', updateError);
+        throw updateError;
+      }
+    }
+
+    // Actualizar suscripción del usuario
+    if (payment.plan_id) {
+      const { error: userUpdateError } = await supabase
+        .from('users')
+        .update({
+          subscription_plan_id: payment.plan_id,
+          subscription_status: 'active',
+          subscription_start_date: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (userUpdateError) {
+        console.error('❌ Error actualizando suscripción del usuario:', userUpdateError);
+        throw userUpdateError;
+      }
+
+      console.log(`✅ Suscripción actualizada: Usuario ${userId} → Plan ${payment.plan_id}`);
+    }
+
+    return {
+      success: true,
+      plan_id: payment.plan_id,
+      message: 'Pago completado y suscripción actualizada'
+    };
+
+  } catch (error) {
+    console.error('❌ Error completando pago de upgrade:', error);
+    throw error;
+  }
+};
+
+/**
  * Marcar pago como completado (desde webhook de Izipay)
  */
 exports.markPaymentAsCompleted = async (orderId) => {

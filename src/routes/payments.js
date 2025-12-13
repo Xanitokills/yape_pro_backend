@@ -19,6 +19,7 @@ router.post('/webhook/izipay', paymentsController.handleIzipayWebhook);
 // Upgrade endpoints (requieren autenticación)
 router.post('/create-upgrade-order', authenticateToken, paymentsController.createUpgradeOrder);
 router.get('/upgrade-status/:reference', authenticateToken, paymentsController.checkUpgradePaymentStatus);
+router.post('/complete-upgrade', authenticateToken, paymentsController.completeUpgradePayment);
 
 // Página de pago Izipay (para WebView)
 router.get('/izipay-form', paymentsController.renderIzipayForm);

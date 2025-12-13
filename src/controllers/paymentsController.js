@@ -264,6 +264,47 @@ exports.checkUpgradePaymentStatus = async (req, res) => {
 };
 
 /**
+ * Completar pago de upgrade (llamado desde la app después del éxito en WebView)
+ * POST /api/payments/complete-upgrade
+ */
+exports.completeUpgradePayment = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no autenticado'
+      });
+    }
+
+    const { reference } = req.body;
+
+    if (!reference) {
+      return res.status(400).json({
+        success: false,
+        message: 'Referencia de pago requerida'
+      });
+    }
+
+    console.log(`📥 Completando pago de upgrade: ${reference} para usuario: ${userId}`);
+
+    const result = await paymentService.completeUpgradePayment(userId, reference);
+
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+
+  } catch (error) {
+    console.error('❌ Error en completeUpgradePayment:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error al completar pago de upgrade'
+    });
+  }
+};
+
+/**
  * Renderizar formulario de pago Izipay (para WebView)
  * GET /api/payments/izipay-form
  */
