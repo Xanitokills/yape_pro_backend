@@ -8,17 +8,34 @@ const crypto = require('crypto');
  */
 const IZIPAY_CONFIG = {
   apiUrl: process.env.IZIPAY_API_URL || 'https://api.micuentaweb.pe/api-payment/V4',
-  shopId: process.env.IZIPAY_SHOP_ID, // Tu Shop ID
-  apiKey: process.env.IZIPAY_API_KEY, // Tu API Key (privada)
-  publicKey: process.env.IZIPAY_PUBLIC_KEY, // Tu clave pública
   mode: process.env.IZIPAY_MODE || 'TEST', // TEST o PRODUCTION
+  
+  // Credenciales según el modo
+  get shopId() {
+    return process.env.IZIPAY_SHOP_ID;
+  },
+  get password() {
+    return this.mode === 'TEST' 
+      ? process.env.IZIPAY_PASSWORD_TEST 
+      : process.env.IZIPAY_PASSWORD_PROD;
+  },
+  get publicKey() {
+    return this.mode === 'TEST'
+      ? process.env.IZIPAY_PUBLIC_KEY_TEST
+      : process.env.IZIPAY_PUBLIC_KEY_PROD;
+  },
+  get hmacKey() {
+    return this.mode === 'TEST'
+      ? process.env.IZIPAY_HMAC_SHA256_TEST
+      : process.env.IZIPAY_HMAC_SHA256_PROD;
+  }
 };
 
 /**
  * Generar firma HMAC-SHA256 para autenticación
  */
 function generateSignature(data) {
-  const hmac = crypto.createHmac('sha256', IZIPAY_CONFIG.apiKey);
+  const hmac = crypto.createHmac('sha256', IZIPAY_CONFIG.hmacKey);
   hmac.update(JSON.stringify(data));
   return hmac.digest('hex');
 }
@@ -50,7 +67,7 @@ exports.createPaymentToken = async ({ amount, orderId, currency = 'PEN', custome
       {
         auth: {
           username: IZIPAY_CONFIG.shopId,
-          password: IZIPAY_CONFIG.apiKey,
+          password: IZIPAY_CONFIG.password,
         },
         headers: {
           'Content-Type': 'application/json',
@@ -97,7 +114,7 @@ exports.createQRPayment = async ({ amount, orderId, paymentMethod, customer }) =
       {
         auth: {
           username: IZIPAY_CONFIG.shopId,
-          password: IZIPAY_CONFIG.apiKey,
+          password: IZIPAY_CONFIG.password,
         },
         headers: {
           'Content-Type': 'application/json',
@@ -133,7 +150,7 @@ exports.getTransactionStatus = async (transactionId) => {
       {
         auth: {
           username: IZIPAY_CONFIG.shopId,
-          password: IZIPAY_CONFIG.apiKey,
+          password: IZIPAY_CONFIG.password,
         },
         headers: {
           'Content-Type': 'application/json',
