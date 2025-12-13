@@ -137,6 +137,29 @@ async function createNotification(req, res) {
         upgradeRequired: true
       });
     }
+
+    // 🔒 VERIFICAR DUPLICADOS (misma tienda, monto, remitente en últimos 30 segundos)
+    const timestamp = notification_timestamp || new Date().toISOString();
+    const thirtySecondsAgo = new Date(new Date(timestamp).getTime() - 30000).toISOString();
+    
+    const { data: existingNotification } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('store_id', store_id)
+      .eq('amount', parseFloat(amount))
+      .eq('sender_name', sender_name || '')
+      .gte('notification_timestamp', thirtySecondsAgo)
+      .single();
+
+    if (existingNotification) {
+      console.log(`⚠️ Notificación duplicada detectada para tienda ${store_id}, monto ${amount}, remitente ${sender_name}`);
+      return res.status(200).json({
+        success: true,
+        message: 'Notificación ya registrada (duplicado ignorado)',
+        notification: existingNotification,
+        duplicate: true
+      });
+    }
     
     // Crear notificación en BD
     const { data: notification, error: createError } = await supabase

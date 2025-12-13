@@ -463,25 +463,33 @@ exports.completeUpgradePayment = async (userId, reference) => {
       throw new Error('Pago no encontrado');
     }
 
-    // Si ya está completado, solo actualizamos la suscripción
-    if (payment.status !== 'completed') {
-      // Actualizar estado del pago
-      const { error: updateError } = await supabase
-        .from('payments')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('order_id', reference);
-
-      if (updateError) {
-        console.error('❌ Error actualizando pago:', updateError);
-        throw updateError;
-      }
+    // Si ya está completado, no hacer nada más (el webhook ya procesó)
+    if (payment.status === 'completed') {
+      console.log(`ℹ️ Pago ${reference} ya fue completado previamente (probablemente por webhook)`);
+      return {
+        success: true,
+        plan_id: payment.plan_id,
+        message: 'Pago ya estaba completado',
+        alreadyProcessed: true
+      };
     }
 
-    // Actualizar suscripción del usuario
+    // Actualizar estado del pago
+    const { error: updateError } = await supabase
+      .from('payments')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('order_id', reference);
+
+    if (updateError) {
+      console.error('❌ Error actualizando pago:', updateError);
+      throw updateError;
+    }
+
+    // Actualizar suscripción del usuario (solo si no fue procesado antes)
     if (payment.plan_id) {
       // Calcular fecha de expiración (30 días desde ahora)
       const expiresAt = new Date();
