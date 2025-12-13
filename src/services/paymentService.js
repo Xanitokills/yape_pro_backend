@@ -488,7 +488,6 @@ exports.completeUpgradePayment = async (userId, reference) => {
         .update({
           subscription_plan_id: payment.plan_id,
           subscription_status: 'active',
-          subscription_start_date: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
@@ -549,7 +548,6 @@ exports.markPaymentAsCompleted = async (orderId) => {
         .update({
           subscription_plan_id: payment.plan_id,
           subscription_status: 'active',
-          subscription_start_date: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', payment.user_id);
