@@ -1,6 +1,7 @@
 // server.js
 require('dotenv').config();
 const app = require('./src/app');
+const { processRenewalReminders } = require('./src/services/renewalNotificationService');
 
 const PORT = process.env.PORT || 3002;
 
@@ -25,6 +26,20 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     }, 5 * 60 * 1000); // Cada 5 minutos
     
     console.log(`💓 Keep-alive enabled: pinging every 5 minutes`);
+
+    // Cron job para recordatorios de renovación - cada 6 horas
+    // Ejecutar inmediatamente al iniciar y luego cada 6 horas
+    setTimeout(async () => {
+      console.log('📧 Ejecutando verificación inicial de renovaciones...');
+      await processRenewalReminders();
+    }, 30000); // 30 segundos después de iniciar
+
+    setInterval(async () => {
+      console.log('📧 Ejecutando verificación programada de renovaciones...');
+      await processRenewalReminders();
+    }, 6 * 60 * 60 * 1000); // Cada 6 horas
+    
+    console.log(`📧 Renewal reminders: checking every 6 hours`);
   }
 });
 

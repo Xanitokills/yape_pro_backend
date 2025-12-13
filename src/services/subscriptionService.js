@@ -354,6 +354,76 @@ class SubscriptionService {
     
     return true;
   }
+
+  /**
+   * Obtener usuarios con suscripciones por expirar
+   * @param {number} daysUntilExpiry - Días antes de la expiración
+   * @returns {Array} Lista de usuarios con suscripciones por expirar
+   */
+  async getExpiringSubscriptions(daysUntilExpiry) {
+    try {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + daysUntilExpiry);
+      
+      // Rango: desde inicio del día hasta fin del día
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data, error } = await supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          full_name,
+          subscription_plan_id,
+          subscription_expires_at,
+          subscription_status
+        `)
+        .neq('subscription_plan_id', 'free')
+        .eq('subscription_status', 'active')
+        .gte('subscription_expires_at', startOfDay.toISOString())
+        .lte('subscription_expires_at', endOfDay.toISOString());
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error obteniendo suscripciones por expirar:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener usuarios con suscripción expirada hoy
+   * @returns {Array} Lista de usuarios con suscripciones expiradas
+   */
+  async getExpiredSubscriptions() {
+    try {
+      const now = new Date();
+
+      const { data, error } = await supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          full_name,
+          subscription_plan_id,
+          subscription_expires_at,
+          subscription_status
+        `)
+        .neq('subscription_plan_id', 'free')
+        .eq('subscription_status', 'active')
+        .lt('subscription_expires_at', now.toISOString());
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error obteniendo suscripciones expiradas:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new SubscriptionService();
