@@ -20,6 +20,9 @@ router.post('/webhook/izipay', paymentsController.handleIzipayWebhook);
 router.post('/create-upgrade-order', authenticateToken, paymentsController.createUpgradeOrder);
 router.get('/upgrade-status/:reference', authenticateToken, paymentsController.checkUpgradePaymentStatus);
 
+// Página de pago Izipay (para WebView)
+router.get('/izipay-form', paymentsController.renderIzipayForm);
+
 // [ADMIN] Listar todos los pagos
 router.get('/list', authenticateToken, paymentsController.listPayments);
 

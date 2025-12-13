@@ -262,3 +262,145 @@ exports.checkUpgradePaymentStatus = async (req, res) => {
     });
   }
 };
+
+/**
+ * Renderizar formulario de pago Izipay (para WebView)
+ * GET /api/payments/izipay-form
+ */
+exports.renderIzipayForm = async (req, res) => {
+  try {
+    const { formToken, publicKey, amount, reference } = req.query;
+
+    if (!formToken || !publicKey) {
+      return res.status(400).send('Parámetros requeridos: formToken, publicKey');
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pago Seguro</title>
+    <link rel="stylesheet" href="https://static.micuentaweb.pe/static/js/krypton-client/V4.0/ext/classic-reset.css">
+    <script src="https://static.micuentaweb.pe/static/js/krypton-client/V4.0/stable/kr-payment-form.min.js" 
+            kr-public-key="${publicKey}"
+            kr-post-url-success="https://yapeprobackend-production.up.railway.app/api/payments/izipay-success"
+            kr-post-url-refused="https://yapeprobackend-production.up.railway.app/api/payments/izipay-refused"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h2 { margin: 0 0 8px 0; font-size: 18px; }
+        .amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #5B16D0;
+        }
+        .reference {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .kr-embedded {
+            padding: 12px;
+        }
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        .loading.hidden { display: none; }
+        #kr-smart-form { min-height: 200px; }
+        .error-msg {
+            background: #fee;
+            color: #c00;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Pago Seguro</h2>
+            <div class="amount">S/. ${amount || '0.00'}</div>
+            <div class="reference">Ref: ${reference || 'N/A'}</div>
+        </div>
+        
+        <div id="loading" class="loading">
+            ⏳ Cargando formulario de pago...
+        </div>
+        
+        <div id="error-msg" class="error-msg"></div>
+        
+        <div class="kr-embedded" kr-form-token="${formToken}"></div>
+    </div>
+
+    <script>
+        // Esperar a que KR esté disponible
+        function waitForKR(callback, maxAttempts) {
+            maxAttempts = maxAttempts || 50;
+            var attempts = 0;
+            var interval = setInterval(function() {
+                attempts++;
+                if (typeof KR !== 'undefined') {
+                    clearInterval(interval);
+                    callback();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    document.getElementById('error-msg').textContent = 'Error: No se pudo cargar el formulario de pago';
+                    document.getElementById('error-msg').style.display = 'block';
+                    document.getElementById('loading').style.display = 'none';
+                }
+            }, 200);
+        }
+
+        waitForKR(function() {
+            document.getElementById('loading').classList.add('hidden');
+            
+            KR.onError(function(event) {
+                var msg = event.errorMessage || 'Error en el pago';
+                document.getElementById('error-msg').textContent = msg;
+                document.getElementById('error-msg').style.display = 'block';
+            });
+            
+            KR.onSubmit(function(event) {
+                if (event.clientAnswer && event.clientAnswer.orderStatus === 'PAID') {
+                    // Redirigir a éxito
+                    window.location.href = 'izipay://success?orderId=' + 
+                        (event.clientAnswer.orderDetails ? event.clientAnswer.orderDetails.orderId : '');
+                }
+                return true;
+            });
+        });
+    </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+
+  } catch (error) {
+    console.error('❌ Error en renderIzipayForm:', error);
+    res.status(500).send('Error al generar formulario de pago');
+  }
+};
