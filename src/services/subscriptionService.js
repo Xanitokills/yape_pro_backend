@@ -204,15 +204,23 @@ class SubscriptionService {
         action = 'downgrade';
       }
 
+      // Preparar datos de actualización
+      const updateData = {
+        subscription_plan_id: newPlanId,
+        subscription_started_at: new Date().toISOString(),
+        subscription_status: 'active',
+        updated_at: new Date().toISOString()
+      };
+
+      // Si es downgrade a free, limpiar fecha de expiración
+      if (newPlanId === 'free') {
+        updateData.subscription_expires_at = null;
+      }
+
       // Actualizar plan del usuario
       const { error: updateError } = await supabase
         .from('users')
-        .update({
-          subscription_plan_id: newPlanId,
-          subscription_started_at: new Date().toISOString(),
-          subscription_status: 'active',
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', userId);
 
       if (updateError) throw updateError;
