@@ -104,6 +104,55 @@ exports.handleWebhook = async (req, res) => {
 };
 
 /**
+ * Webhook específico de Izipay (IPN - Instant Payment Notification)
+ * POST /api/payments/webhook/izipay
+ */
+exports.handleIzipayWebhook = async (req, res) => {
+  try {
+    console.log('📥 Izipay Webhook recibido:', JSON.stringify(req.body, null, 2));
+    
+    const { kr_answer, kr_hash, kr_hash_algorithm } = req.body;
+    
+    if (!kr_answer) {
+      return res.status(400).json({
+        success: false,
+        message: 'Datos de webhook inválidos'
+      });
+    }
+
+    // Parsear respuesta de Izipay
+    const answerData = typeof kr_answer === 'string' 
+      ? JSON.parse(kr_answer) 
+      : kr_answer;
+
+    console.log('📄 Datos del pago:', {
+      orderId: answerData.orderDetails?.orderId,
+      status: answerData.orderStatus,
+      amount: answerData.orderDetails?.orderTotalAmount,
+      transactionUuid: answerData.transactions?.[0]?.uuid
+    });
+
+    // Verificar si es pago exitoso
+    if (answerData.orderStatus === 'PAID') {
+      const orderId = answerData.orderDetails?.orderId;
+      
+      // Actualizar el pago en la base de datos
+      await paymentService.markPaymentAsCompleted(orderId);
+      
+      console.log('✅ Pago completado:', orderId);
+    }
+
+    // Izipay requiere respuesta 200 para confirmar recepción
+    res.status(200).send('OK');
+
+  } catch (error) {
+    console.error('❌ Error en handleIzipayWebhook:', error);
+    // Siempre responder 200 a Izipay para evitar reenvíos
+    res.status(200).send('OK');
+  }
+};
+
+/**
  * Listar todos los pagos (Admin)
  * GET /api/payments/list
  */

@@ -443,3 +443,60 @@ exports.checkUpgradeStatus = async (userId, reference) => {
     throw error;
   }
 };
+
+/**
+ * Marcar pago como completado (desde webhook de Izipay)
+ */
+exports.markPaymentAsCompleted = async (orderId) => {
+  try {
+    // Buscar el pago por order_id
+    const { data: payment, error: fetchError } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('order_id', orderId)
+      .single();
+
+    if (fetchError || !payment) {
+      console.error('❌ Pago no encontrado:', orderId);
+      throw new Error('Pago no encontrado');
+    }
+
+    // Actualizar estado del pago
+    const { error: updateError } = await supabase
+      .from('payments')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('order_id', orderId);
+
+    if (updateError) throw updateError;
+
+    // Si tiene user_id, actualizar su suscripción
+    if (payment.user_id && payment.plan_id) {
+      const { error: userUpdateError } = await supabase
+        .from('users')
+        .update({
+          subscription_plan_id: payment.plan_id,
+          subscription_status: 'active',
+          subscription_start_date: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', payment.user_id);
+
+      if (userUpdateError) {
+        console.error('❌ Error actualizando suscripción del usuario:', userUpdateError);
+      } else {
+        console.log(`✅ Suscripción actualizada para usuario ${payment.user_id} → ${payment.plan_id}`);
+      }
+    }
+
+    console.log(`✅ Pago completado: ${orderId}`);
+    return { success: true };
+
+  } catch (error) {
+    console.error('❌ Error marcando pago como completado:', error);
+    throw error;
+  }
+};
