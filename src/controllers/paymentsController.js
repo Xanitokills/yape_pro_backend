@@ -269,11 +269,23 @@ exports.checkUpgradePaymentStatus = async (req, res) => {
  */
 exports.renderIzipayForm = async (req, res) => {
   try {
-    const { formToken, publicKey, amount, reference } = req.query;
+    const { formToken, amount, reference } = req.query;
 
-    if (!formToken || !publicKey) {
-      return res.status(400).send('Parámetros requeridos: formToken, publicKey');
+    if (!formToken) {
+      return res.status(400).send('Parámetro requerido: formToken');
     }
+
+    // Usar la clave pública del servidor, no de la URL
+    const publicKey = process.env.IZIPAY_MODE === 'PRODUCTION' 
+      ? process.env.IZIPAY_PUBLIC_KEY_PROD 
+      : process.env.IZIPAY_PUBLIC_KEY_TEST;
+
+    if (!publicKey) {
+      console.error('❌ IZIPAY_PUBLIC_KEY no configurada');
+      return res.status(500).send('Error de configuración del servidor');
+    }
+
+    console.log('📄 Renderizando formulario Izipay con publicKey:', publicKey.substring(0, 25) + '...');
 
     const html = `
 <!DOCTYPE html>
