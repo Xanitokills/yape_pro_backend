@@ -307,9 +307,172 @@ const cancelPaymentOrder = async (req, res) => {
   }
 };
 
+/**
+ * Crear orden de pago para upgrade (usuario autenticado)
+ */
+const createUpgradeOrder = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { plan_id, amount, payment_method = 'card' } = req.body;
+
+    // Validar que el usuario existe
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('email, full_name, subscription_plan_id')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Obtener plan destino
+    const { data: targetPlan, error: planError } = await supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('id', plan_id)
+      .eq('is_active', true)
+      .single();
+
+    if (planError || !targetPlan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Plan no encontrado'
+      });
+    }
+
+    // Validar que no sea el plan actual
+    if (user.subscription_plan_id === plan_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya tienes este plan activo'
+      });
+    }
+
+    // Generar referencia única
+    const reference = `UPG-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+    // Crear registro en tabla payments
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .insert({
+        order_id: reference,
+        user_id: userId,
+        plan_id: plan_id,
+        amount: amount,
+        currency: 'PEN',
+        status: 'pending',
+        payment_method: payment_method,
+        metadata: {
+          planName: targetPlan.name,
+          userEmail: user.email,
+          previousPlan: user.subscription_plan_id,
+          type: 'upgrade'
+        }
+      })
+      .select()
+      .single();
+
+    if (paymentError) {
+      console.error('Error creando payment:', paymentError);
+      throw paymentError;
+    }
+
+    // Crear orden en Izipay
+    let izipayData = {};
+    
+    if (payment_method === 'card') {
+      const izipayResponse = await createIzipayOrder({
+        orderId: reference,
+        amount: amount * 100, // Convertir a centavos
+        currency: 'PEN',
+        customer: {
+          email: user.email,
+          userId: userId,
+          name: user.full_name
+        },
+        description: `Upgrade a ${targetPlan.name} - YapePro`
+      });
+      izipayData.formToken = izipayResponse.formToken;
+    } else if (payment_method === 'yape' || payment_method === 'plin') {
+      // Para QR (simulado en TEST)
+      izipayData.qr_code = `QR_${reference}`;
+      izipayData.qr_url = `https://test.izipay.com/qr/${reference}`;
+    }
+
+    console.log(`✅ Orden de upgrade creada: ${reference} - Plan: ${targetPlan.name}`);
+
+    res.json({
+      success: true,
+      data: {
+        reference: reference,
+        formToken: izipayData.formToken,
+        qr_code: izipayData.qr_code,
+        qr_url: izipayData.qr_url,
+        amount: amount,
+        planName: targetPlan.name,
+        payment_method: payment_method
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error creando orden de upgrade:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear orden de upgrade',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Verificar estado del pago de upgrade
+ */
+const checkUpgradePaymentStatus = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { reference } = req.params;
+
+    const { data: payment, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('order_id', reference)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !payment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pago no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        status: payment.status,
+        paid_at: payment.paid_at,
+        transaction_id: payment.transaction_id
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error verificando pago:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar pago'
+    });
+  }
+};
+
 module.exports = {
   createPaymentOrder,
   handleIzipayWebhook,
   getUserPayments,
-  cancelPaymentOrder
+  cancelPaymentOrder,
+  createUpgradeOrder,
+  checkUpgradePaymentStatus
 };

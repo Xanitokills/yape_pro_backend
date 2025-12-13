@@ -15,6 +15,7 @@ const subscriptionRoutes = require('./routes/subscriptions');
 const adminRoutes = require('./routes/admin');
 const setupRoutes = require('./routes/setup');
 const testRoutes = require('./routes/test');
+const contactRoutes = require('./routes/contact');
 
 // Importar middleware de error
 const errorHandler = require('./middleware/errorHandler');
@@ -83,6 +84,7 @@ app.use('/api/payments', paymentsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/setup', setupRoutes); // ⚠️ ELIMINAR EN PRODUCCIÓN
+app.use('/api', contactRoutes);
 
 // 🧪 Rutas de testing (solo en desarrollo)
 if (process.env.NODE_ENV === 'development') {

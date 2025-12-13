@@ -129,3 +129,87 @@ exports.listPayments = async (req, res) => {
     });
   }
 };
+
+/**
+ * Crear orden de pago para upgrade (usuario autenticado)
+ * POST /api/payments/create-upgrade-order
+ */
+exports.createUpgradeOrder = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no autenticado'
+      });
+    }
+
+    const { plan_id, amount, payment_method } = req.body;
+
+    if (!plan_id || !amount || !payment_method) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan datos requeridos: plan_id, amount, payment_method'
+      });
+    }
+
+    const paymentOrder = await paymentService.createUpgradeOrder({
+      userId,
+      planId: plan_id,
+      amount,
+      paymentMethod: payment_method
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Orden de upgrade creada',
+      data: paymentOrder
+    });
+
+  } catch (error) {
+    console.error('❌ Error en createUpgradeOrder:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error al crear orden de upgrade'
+    });
+  }
+};
+
+/**
+ * Verificar estado del pago de upgrade
+ * GET /api/payments/upgrade-status/:reference
+ */
+exports.checkUpgradePaymentStatus = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario no autenticado'
+      });
+    }
+
+    const { reference } = req.params;
+
+    if (!reference) {
+      return res.status(400).json({
+        success: false,
+        message: 'Referencia de pago requerida'
+      });
+    }
+
+    const status = await paymentService.checkUpgradeStatus(userId, reference);
+
+    res.status(200).json({
+      success: true,
+      data: status
+    });
+
+  } catch (error) {
+    console.error('❌ Error en checkUpgradePaymentStatus:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error al verificar pago de upgrade'
+    });
+  }
+};

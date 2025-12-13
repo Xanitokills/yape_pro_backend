@@ -13,6 +13,10 @@ router.get('/status/:reference', paymentsController.checkPaymentStatus);
 // Webhook para confirmación de pago (desde proveedor)
 router.post('/webhook', paymentsController.handleWebhook);
 
+// Upgrade endpoints (requieren autenticación)
+router.post('/create-upgrade-order', authenticateToken, paymentsController.createUpgradeOrder);
+router.get('/upgrade-status/:reference', authenticateToken, paymentsController.checkUpgradePaymentStatus);
+
 // [ADMIN] Listar todos los pagos
 router.get('/list', authenticateToken, paymentsController.listPayments);
 

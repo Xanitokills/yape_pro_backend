@@ -323,3 +323,123 @@ async function generateQRCode(reference, amount, method) {
   // URL simulado - reemplaza con generación real
   return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}`;
 }
+
+/**
+ * Crear orden de pago para upgrade (usuario autenticado)
+ */
+exports.createUpgradeOrder = async ({ userId, planId, amount, paymentMethod }) => {
+  try {
+    const reference = generateReference();
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutos
+
+    // Obtener datos del usuario
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('email, full_name, phone, subscription_plan_id')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    // Validar que no sea el plan actual
+    if (user.subscription_plan_id === planId) {
+      throw new Error('Ya tienes este plan activo');
+    }
+
+    // Insertar en tabla payments
+    const { data: payment, error } = await supabase
+      .from('payments')
+      .insert({
+        order_id: reference,
+        user_id: userId,
+        plan_id: planId,
+        amount,
+        currency: 'PEN',
+        payment_method: paymentMethod,
+        status: 'pending',
+        metadata: {
+          type: 'upgrade',
+          previousPlan: user.subscription_plan_id,
+          userEmail: user.email
+        },
+        expires_at: expiresAt.toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Generar datos según método de pago
+    let paymentData = {
+      reference,
+      amount,
+      expires_at: expiresAt.toISOString()
+    };
+
+    if (paymentMethod === 'card') {
+      // Generar token de pago con Izipay
+      try {
+        const tokenData = await izipayService.createPaymentToken({
+          amount,
+          orderId: reference,
+          customer: {
+            email: user.email,
+            phone: user.phone || '',
+            name: user.full_name || 'Usuario',
+          },
+        });
+
+        paymentData.formToken = tokenData.formToken;
+        paymentData.publicKey = tokenData.publicKey;
+      } catch (error) {
+        console.error('Error generando token Izipay:', error);
+        // En TEST mode, retornar token simulado
+        paymentData.formToken = `TEST_TOKEN_${reference}`;
+      }
+    } else if (paymentMethod === 'yape' || paymentMethod === 'plin') {
+      // Generar QR (simulado en TEST)
+      paymentData.qr_code = `QR_${reference}`;
+      paymentData.qr_url = await generateQRCode(reference, amount, paymentMethod);
+    }
+
+    console.log(`✅ Orden de upgrade creada: ${reference} para usuario ${userId}`);
+
+    return paymentData;
+
+  } catch (error) {
+    console.error('❌ Error creando orden de upgrade:', error);
+    throw error;
+  }
+};
+
+/**
+ * Verificar estado del pago de upgrade
+ */
+exports.checkUpgradeStatus = async (userId, reference) => {
+  try {
+    const { data: payment, error } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('order_id', reference)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !payment) {
+      throw new Error('Pago no encontrado');
+    }
+
+    return {
+      status: payment.status,
+      paid_at: payment.paid_at,
+      transaction_id: payment.transaction_id,
+      amount: payment.amount,
+      plan_id: payment.plan_id
+    };
+
+  } catch (error) {
+    console.error('❌ Error verificando estado de upgrade:', error);
+    throw error;
+  }
+};
