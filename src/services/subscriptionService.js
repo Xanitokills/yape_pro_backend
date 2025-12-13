@@ -27,6 +27,7 @@ class SubscriptionService {
 
   /**
    * Obtener información del plan del usuario
+   * Verifica si la suscripción expiró y degrada a Free automáticamente
    */
   async getUserSubscription(userId) {
     try {
@@ -37,6 +38,47 @@ class SubscriptionService {
         .single();
 
       if (error) throw error;
+
+      // Verificar si la suscripción expiró (solo para planes de pago)
+      if (data.subscription_plan_id !== 'free' && data.subscription_expires_at) {
+        const expiresAt = new Date(data.subscription_expires_at);
+        const now = new Date();
+
+        if (now > expiresAt) {
+          // La suscripción expiró - degradar a Free
+          console.log(`⏰ Suscripción expirada para usuario ${userId}, degradando a Free`);
+          
+          await supabase
+            .from('users')
+            .update({
+              subscription_plan_id: 'free',
+              subscription_status: 'expired',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          // Retornar datos actualizados como plan Free
+          const { data: freeData, error: freeError } = await supabase
+            .from('user_subscription_info')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+          if (freeError) throw freeError;
+          
+          return {
+            ...freeData,
+            expired: true,
+            expired_plan: data.subscription_plan_id
+          };
+        }
+
+        // Calcular días restantes
+        const daysRemaining = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+        data.days_remaining = daysRemaining;
+        data.expires_soon = daysRemaining <= 7; // Aviso si quedan 7 días o menos
+      }
+
       return data;
     } catch (error) {
       console.error('Error al obtener suscripción del usuario:', error);

@@ -483,11 +483,17 @@ exports.completeUpgradePayment = async (userId, reference) => {
 
     // Actualizar suscripción del usuario
     if (payment.plan_id) {
+      // Calcular fecha de expiración (30 días desde ahora)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
       const { error: userUpdateError } = await supabase
         .from('users')
         .update({
           subscription_plan_id: payment.plan_id,
           subscription_status: 'active',
+          subscription_started_at: new Date().toISOString(),
+          subscription_expires_at: expiresAt.toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
@@ -497,7 +503,7 @@ exports.completeUpgradePayment = async (userId, reference) => {
         throw userUpdateError;
       }
 
-      console.log(`✅ Suscripción actualizada: Usuario ${userId} → Plan ${payment.plan_id}`);
+      console.log(`✅ Suscripción actualizada: Usuario ${userId} → Plan ${payment.plan_id} (expira: ${expiresAt.toISOString()})`);
     }
 
     return {
@@ -543,11 +549,17 @@ exports.markPaymentAsCompleted = async (orderId) => {
 
     // Si tiene user_id, actualizar su suscripción
     if (payment.user_id && payment.plan_id) {
+      // Calcular fecha de expiración (30 días desde ahora)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
       const { error: userUpdateError } = await supabase
         .from('users')
         .update({
           subscription_plan_id: payment.plan_id,
           subscription_status: 'active',
+          subscription_started_at: new Date().toISOString(),
+          subscription_expires_at: expiresAt.toISOString(),
           updated_at: new Date().toISOString()
         })
         .eq('id', payment.user_id);
@@ -555,7 +567,7 @@ exports.markPaymentAsCompleted = async (orderId) => {
       if (userUpdateError) {
         console.error('❌ Error actualizando suscripción del usuario:', userUpdateError);
       } else {
-        console.log(`✅ Suscripción actualizada para usuario ${payment.user_id} → ${payment.plan_id}`);
+        console.log(`✅ Suscripción actualizada para usuario ${payment.user_id} → ${payment.plan_id} (expira: ${expiresAt.toISOString()})`);
       }
     }
 
