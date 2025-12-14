@@ -315,51 +315,90 @@ async function removeWorker(req, res) {
     const userId = req.user.userId;
     const role = req.user.role;
     
+    console.log(`🗑️ Intentando eliminar trabajador ${workerId} por usuario ${userId} (rol: ${role})`);
+    
     // Obtener trabajador y verificar permisos
     const { data: worker, error: fetchError } = await supabase
       .from('workers')
-      .select('store_id, stores(owner_id)')
+      .select('id, store_id, user_id, stores(owner_id, name)')
       .eq('id', workerId)
       .single();
     
     if (fetchError || !worker) {
+      console.log(`❌ Trabajador ${workerId} no encontrado:`, fetchError);
       return res.status(404).json({
         error: 'Trabajador no encontrado'
       });
     }
     
+    console.log(`📊 Trabajador encontrado:`, {
+      workerId: worker.id,
+      storeId: worker.store_id,
+      storeName: worker.stores?.name,
+      userId: worker.user_id,
+      ownerId: worker.stores?.owner_id
+    });
+    
     if (role === 'owner' && worker.stores.owner_id !== userId) {
+      console.log(`❌ Acceso denegado: Owner ${userId} no es dueño de tienda ${worker.store_id}`);
       return res.status(403).json({
         error: 'Acceso denegado',
         message: 'No tienes permiso para eliminar este trabajador'
       });
     }
     
-    // Eliminar (o desactivar)
-    // Opción 1: Eliminar completamente
-    const { error: deleteError } = await supabase
+    // Eliminar de la tabla workers
+    const { data: deletedData, error: deleteError, count } = await supabase
       .from('workers')
       .delete()
-      .eq('id', workerId);
-    
-    // Opción 2: Solo desactivar (comentar líneas anteriores y usar esto)
-    // const { error: deleteError } = await supabase
-    //   .from('workers')
-    //   .update({ is_active: false })
-    //   .eq('id', workerId);
+      .eq('id', workerId)
+      .select();
     
     if (deleteError) {
-      console.error('Error al eliminar trabajador:', deleteError);
+      console.error('❌ Error al eliminar trabajador:', deleteError);
       throw deleteError;
     }
     
+    console.log(`✅ Resultado de eliminación:`, {
+      deletedData,
+      count,
+      deletedRows: deletedData?.length || 0
+    });
+    
+    // Verificar que realmente se eliminó
+    if (!deletedData || deletedData.length === 0) {
+      console.log(`⚠️ No se eliminó ningún registro - posible problema de RLS`);
+      
+      // Verificar si el registro aún existe
+      const { data: stillExists } = await supabase
+        .from('workers')
+        .select('id')
+        .eq('id', workerId)
+        .single();
+      
+      if (stillExists) {
+        console.log(`❌ El trabajador ${workerId} aún existe en la base de datos`);
+        return res.status(500).json({
+          success: false,
+          error: 'No se pudo eliminar el trabajador',
+          message: 'La eliminación no se completó. Puede ser un problema de permisos en la base de datos.'
+        });
+      }
+    }
+    
+    console.log(`✅ Trabajador ${workerId} eliminado exitosamente`);
+    
     res.json({
       success: true,
-      message: 'Trabajador eliminado exitosamente'
+      message: 'Trabajador eliminado exitosamente',
+      data: {
+        deletedWorkerId: workerId,
+        userId: worker.user_id
+      }
     });
     
   } catch (error) {
-    console.error('Error en removeWorker:', error);
+    console.error('❌ Error en removeWorker:', error);
     res.status(500).json({
       error: 'Error al eliminar trabajador',
       message: 'No se pudo eliminar el trabajador'

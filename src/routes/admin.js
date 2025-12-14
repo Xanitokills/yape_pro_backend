@@ -70,4 +70,12 @@ router.put('/plans/:planId', adminController.updatePlan);
  */
 router.delete('/plans/:planId', adminController.deactivatePlan);
 
+/**
+ * @route   DELETE /api/admin/users/:userId
+ * @desc    Eliminar un owner y todos sus datos en cascada
+ *          (tiendas, trabajadores, notificaciones, tokens)
+ * @access  Super Admin
+ */
+router.delete('/users/:userId', adminController.deleteOwner);
+
 module.exports = router;

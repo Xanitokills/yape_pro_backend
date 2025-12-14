@@ -534,6 +534,120 @@ const resetUserLimits = async (req, res) => {
   }
 };
 
+/**
+ * Eliminar un owner y todos sus datos en cascada
+ * DELETE /api/admin/users/:userId
+ * 
+ * Esto eliminará:
+ * - Usuario (owner)
+ * - Tiendas del owner (CASCADE)
+ * - Workers de las tiendas (CASCADE)
+ * - Notificaciones de las tiendas (CASCADE)
+ * - FCM tokens del usuario (CASCADE)
+ * - Refresh tokens del usuario (CASCADE)
+ * - Usage tracking del usuario (CASCADE)
+ */
+const deleteOwner = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const adminId = req.user.userId;
+
+    console.log(`🗑️ Admin ${adminId} solicitó eliminar owner ${userId}`);
+
+    // Verificar que el usuario existe y es owner
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, full_name, role')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      console.log(`❌ Usuario ${userId} no encontrado`);
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // No permitir eliminar super_admins
+    if (user.role === 'super_admin') {
+      console.log(`❌ Intento de eliminar super_admin ${userId}`);
+      return res.status(403).json({
+        success: false,
+        message: 'No se puede eliminar a un super administrador'
+      });
+    }
+
+    // Obtener información para el log antes de eliminar
+    const { data: stores } = await supabase
+      .from('stores')
+      .select('id, name')
+      .eq('owner_id', userId);
+
+    const storeIds = stores?.map(s => s.id) || [];
+    
+    let workersCount = 0;
+    let notificationsCount = 0;
+    
+    if (storeIds.length > 0) {
+      const { count: wCount } = await supabase
+        .from('workers')
+        .select('*', { count: 'exact', head: true })
+        .in('store_id', storeIds);
+      workersCount = wCount || 0;
+
+      const { count: nCount } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .in('store_id', storeIds);
+      notificationsCount = nCount || 0;
+    }
+
+    console.log(`📊 Datos a eliminar para ${user.email}:`);
+    console.log(`   - Tiendas: ${stores?.length || 0}`);
+    console.log(`   - Trabajadores: ${workersCount}`);
+    console.log(`   - Notificaciones: ${notificationsCount}`);
+
+    // Eliminar usuario (CASCADE eliminará todo lo relacionado)
+    const { error: deleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId);
+
+    if (deleteError) {
+      console.error('❌ Error al eliminar usuario:', deleteError);
+      throw deleteError;
+    }
+
+    console.log(`✅ Usuario ${user.email} eliminado exitosamente con todos sus datos`);
+
+    res.json({
+      success: true,
+      message: 'Usuario eliminado exitosamente',
+      data: {
+        deletedUser: {
+          id: userId,
+          email: user.email,
+          full_name: user.full_name
+        },
+        deletedResources: {
+          stores: stores?.length || 0,
+          workers: workersCount,
+          notifications: notificationsCount
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en deleteOwner:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar el usuario',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   changeUserPlan,
@@ -542,5 +656,6 @@ module.exports = {
   createPlan,
   deactivatePlan,
   getUserSubscriptionHistory,
-  resetUserLimits
+  resetUserLimits,
+  deleteOwner
 };
