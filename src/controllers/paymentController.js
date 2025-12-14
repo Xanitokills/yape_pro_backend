@@ -318,7 +318,7 @@ const createUpgradeOrder = async (req, res) => {
     // Validar que el usuario existe
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('email, full_name, subscription_plan_id')
+      .select('email, full_name, subscription_plan_id, subscription_expires_at, subscription_status')
       .eq('id', userId)
       .single();
 
@@ -344,11 +344,18 @@ const createUpgradeOrder = async (req, res) => {
       });
     }
 
-    // Validar que no sea el plan actual
-    if (user.subscription_plan_id === plan_id) {
+    // Determinar si es renovación o upgrade
+    const isSamePlan = user.subscription_plan_id === plan_id;
+    const isRenewal = isSamePlan && (
+      user.subscription_status === 'expired' ||
+      (user.subscription_expires_at && new Date(user.subscription_expires_at) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // Permite renovar si quedan 7 días o menos
+    );
+
+    // Solo bloquear si es el mismo plan Y no es una renovación válida
+    if (isSamePlan && !isRenewal) {
       return res.status(400).json({
         success: false,
-        message: 'Ya tienes este plan activo'
+        message: 'Ya tienes este plan activo. Podrás renovar cuando queden 7 días o menos.'
       });
     }
 
@@ -370,7 +377,8 @@ const createUpgradeOrder = async (req, res) => {
           planName: targetPlan.name,
           userEmail: user.email,
           previousPlan: user.subscription_plan_id,
-          type: 'upgrade'
+          type: isRenewal ? 'renewal' : 'upgrade',
+          isRenewal: isRenewal
         }
       })
       .select()

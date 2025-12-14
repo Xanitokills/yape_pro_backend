@@ -335,7 +335,7 @@ exports.createUpgradeOrder = async ({ userId, planId, amount, paymentMethod }) =
     // Obtener datos del usuario
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('email, full_name, phone, subscription_plan_id')
+      .select('email, full_name, phone, subscription_plan_id, subscription_expires_at, subscription_status')
       .eq('id', userId)
       .single();
 
@@ -343,9 +343,16 @@ exports.createUpgradeOrder = async ({ userId, planId, amount, paymentMethod }) =
       throw new Error('Usuario no encontrado');
     }
 
-    // Validar que no sea el plan actual
-    if (user.subscription_plan_id === planId) {
-      throw new Error('Ya tienes este plan activo');
+    // Determinar si es renovación o upgrade
+    const isSamePlan = user.subscription_plan_id === planId;
+    const isRenewal = isSamePlan && (
+      user.subscription_status === 'expired' ||
+      (user.subscription_expires_at && new Date(user.subscription_expires_at) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) // Permite renovar si quedan 7 días o menos
+    );
+
+    // Solo bloquear si es el mismo plan Y no es una renovación válida
+    if (isSamePlan && !isRenewal) {
+      throw new Error('Ya tienes este plan activo. Podrás renovar cuando queden 7 días o menos.');
     }
 
     // Insertar en tabla payments
@@ -360,9 +367,10 @@ exports.createUpgradeOrder = async ({ userId, planId, amount, paymentMethod }) =
         payment_method: paymentMethod,
         status: 'pending',
         metadata: {
-          type: 'upgrade',
+          type: isRenewal ? 'renewal' : 'upgrade',
           previousPlan: user.subscription_plan_id,
-          userEmail: user.email
+          userEmail: user.email,
+          isRenewal: isRenewal
         },
         expires_at: expiresAt.toISOString()
       })
