@@ -608,7 +608,39 @@ const deleteOwner = async (req, res) => {
     console.log(`   - Trabajadores: ${workersCount}`);
     console.log(`   - Notificaciones: ${notificationsCount}`);
 
-    // Eliminar usuario (CASCADE eliminará todo lo relacionado)
+    // Eliminar pagos del usuario primero (para evitar FK constraint)
+    const { error: paymentsError } = await supabase
+      .from('payments')
+      .delete()
+      .eq('user_id', userId);
+
+    if (paymentsError) {
+      console.error('⚠️ Error al eliminar pagos (continuando):', paymentsError);
+    } else {
+      console.log(`✅ Pagos del usuario eliminados`);
+    }
+
+    // Eliminar usage_tracking del usuario
+    const { error: usageError } = await supabase
+      .from('usage_tracking')
+      .delete()
+      .eq('user_id', userId);
+
+    if (usageError) {
+      console.error('⚠️ Error al eliminar usage_tracking (continuando):', usageError);
+    }
+
+    // Eliminar subscription_history del usuario
+    const { error: historyError } = await supabase
+      .from('subscription_history')
+      .delete()
+      .eq('user_id', userId);
+
+    if (historyError) {
+      console.error('⚠️ Error al eliminar subscription_history (continuando):', historyError);
+    }
+
+    // Eliminar usuario (CASCADE eliminará stores, workers, notifications, fcm_tokens, refresh_tokens)
     const { error: deleteError } = await supabase
       .from('users')
       .delete()
