@@ -303,6 +303,13 @@ exports.completeUpgradePayment = async (req, res) => {
 
     const result = await paymentService.completeUpgradePayment(userId, reference);
 
+    console.log(`✅ Pago completado exitosamente:`, {
+      reference,
+      userId,
+      planId: result.plan_id,
+      alreadyProcessed: result.alreadyProcessed
+    });
+
     res.status(200).json({
       success: true,
       data: result
