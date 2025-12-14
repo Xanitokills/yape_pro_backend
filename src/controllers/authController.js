@@ -111,7 +111,7 @@ async function register(req, res) {
     if (cleanPhone) {
       const { data: existingPhone } = await supabase
         .from('users')
-        .select('id')
+        .select('id, role')
         .eq('phone', cleanPhone)
         .single();
       
@@ -119,6 +119,26 @@ async function register(req, res) {
         return res.status(409).json({
           error: 'Teléfono ya registrado',
           message: 'Ya existe una cuenta con este número de teléfono'
+        });
+      }
+      
+      // Verificar si el teléfono está registrado como trabajador en alguna tienda
+      const { data: existingWorker } = await supabase
+        .from('workers')
+        .select('id, temp_full_name, registration_status')
+        .eq('temp_phone', cleanPhone)
+        .in('registration_status', ['pending', 'completed'])
+        .limit(1);
+      
+      if (existingWorker && existingWorker.length > 0) {
+        const worker = existingWorker[0];
+        const status = worker.registration_status === 'pending' 
+          ? 'pendiente de registro' 
+          : 'ya registrado';
+        
+        return res.status(409).json({
+          error: 'Teléfono registrado como trabajador',
+          message: `Este número de teléfono está ${status} como trabajador en otra tienda. No puedes crear una cuenta de dueño con este número.`
         });
       }
     }
@@ -579,14 +599,29 @@ async function registerWorker(req, res) {
       .eq('temp_phone', phone)
       .eq('registration_status', 'completed')
       .neq('id', worker.id)
-      .limit(1)
-      .single();
+      .limit(1);
     
-    if (existingWorkerOtherStore) {
+    if (existingWorkerOtherStore && existingWorkerOtherStore.length > 0) {
       console.log('❌ Trabajador ya registrado en otra tienda');
       return res.status(409).json({
         error: 'Ya registrado',
         message: 'Este número de teléfono ya está registrado como trabajador en otra tienda'
+      });
+    }
+    
+    // Verificar que el teléfono no esté registrado como dueño de tienda
+    const { data: existingOwner } = await supabase
+      .from('users')
+      .select('id, role, full_name')
+      .eq('phone', phone)
+      .eq('role', 'owner')
+      .limit(1);
+    
+    if (existingOwner && existingOwner.length > 0) {
+      console.log('❌ Teléfono ya registrado como dueño de tienda');
+      return res.status(409).json({
+        error: 'Teléfono registrado como dueño',
+        message: 'Este número de teléfono ya está registrado como dueño de tienda. No puedes registrarte como trabajador con este número.'
       });
     }
     
