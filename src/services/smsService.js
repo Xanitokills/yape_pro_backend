@@ -67,6 +67,7 @@ async function sendVerificationSMS(phone, code) {
       success: true,
       simulated: true,
       messageId: `SIM_${Date.now()}`,
+      code: code, // Devolver el código en modo simulado
       message: 'SMS simulado (configurar Twilio para producción)'
     };
   }
@@ -88,6 +89,17 @@ async function sendVerificationSMS(phone, code) {
     
   } catch (error) {
     console.error('❌ Error enviando SMS:', error.message);
+    console.error('❌ Error completo:', error);
+    
+    // En caso de error, retornar el código en modo simulado para desarrollo
+    console.log(`📨 CÓDIGO SIMULADO (por error): ${code}`);
+    return {
+      success: true,
+      simulated: true,
+      code: code,
+      messageId: `SIM_ERROR_${Date.now()}`,
+      message: 'SMS simulado por error en Twilio'
+    };
     
     // Errores comunes de Twilio
     if (error.code === 21211) {

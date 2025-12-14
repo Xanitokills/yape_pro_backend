@@ -166,26 +166,56 @@ async function addWorker(req, res) {
       });
     }
     
-    // Verificar si ya existe un worker con ese teléfono en esta tienda
-    const { data: existingWorker } = await supabase
+    // Verificar si ya existe un worker con ese teléfono en CUALQUIER tienda
+    const { data: existingWorkers, error: checkError } = await supabase
       .from('workers')
-      .select('id, is_active, registration_status')
-      .eq('store_id', store_id)
+      .select('id, store_id, is_active, registration_status')
       .eq('temp_phone', phone)
-      .single();
+      .in('registration_status', ['pending', 'completed']);
     
-    if (existingWorker) {
-      if (existingWorker.registration_status === 'pending') {
+    console.log('🔍 Verificando teléfono:', phone);
+    console.log('🔍 Workers encontrados:', existingWorkers);
+    
+    if (existingWorkers && existingWorkers.length > 0) {
+      const existingWorkerAnyStore = existingWorkers[0];
+      
+      // Si está en otra tienda
+      if (existingWorkerAnyStore.store_id !== store_id) {
+        console.log('❌ Teléfono ya registrado en otra tienda:', existingWorkerAnyStore.store_id);
+        return res.status(409).json({
+          error: 'Trabajador ya registrado',
+          message: 'Este número de teléfono ya está registrado como trabajador en otra tienda'
+        });
+      }
+      
+      // Si está en la misma tienda
+      if (existingWorkerAnyStore.registration_status === 'pending') {
         return res.status(409).json({
           error: 'Trabajador ya existe',
           message: 'Ya existe un trabajador pendiente de registro con este teléfono'
         });
-      } else if (existingWorker.is_active) {
+      } else if (existingWorkerAnyStore.is_active) {
         return res.status(409).json({
           error: 'Trabajador ya existe',
           message: 'Este trabajador ya está registrado en esta tienda'
         });
       }
+    }
+    
+    // También verificar en la tabla users si ya existe un usuario con rol worker con ese teléfono
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('phone', phone)
+      .eq('role', 'worker')
+      .limit(1)
+      .single();
+    
+    if (existingUser) {
+      return res.status(409).json({
+        error: 'Trabajador ya registrado',
+        message: 'Ya existe un usuario trabajador con este número de teléfono'
+      });
     }
     
     // Generar código de invitación único

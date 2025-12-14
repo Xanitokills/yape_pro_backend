@@ -572,14 +572,33 @@ async function registerWorker(req, res) {
     
     console.log('✅ Código válido para:', worker.temp_full_name);
     
+    // Verificar que no exista otro worker activo con este teléfono en otra tienda
+    const { data: existingWorkerOtherStore } = await supabase
+      .from('workers')
+      .select('id, store_id')
+      .eq('temp_phone', phone)
+      .eq('registration_status', 'completed')
+      .neq('id', worker.id)
+      .limit(1)
+      .single();
+    
+    if (existingWorkerOtherStore) {
+      console.log('❌ Trabajador ya registrado en otra tienda');
+      return res.status(409).json({
+        error: 'Ya registrado',
+        message: 'Este número de teléfono ya está registrado como trabajador en otra tienda'
+      });
+    }
+    
     // Generar email automático
     const email = `worker${phone}@yape.temp`;
     
-    // Verificar si el email ya existe (por si acaso)
+    // Verificar si el email/teléfono ya existe como usuario
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .or(`email.eq.${email},phone.eq.${phone}`)
+      .limit(1)
       .single();
     
     if (existingUser) {
