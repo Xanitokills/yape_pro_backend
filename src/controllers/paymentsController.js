@@ -212,6 +212,12 @@ exports.createUpgradeOrder = async (req, res) => {
       paymentMethod: finalPaymentMethod
     });
 
+    console.log('✅ Orden creada exitosamente:', {
+      reference: paymentOrder.reference,
+      amount: paymentOrder.amount,
+      hasFormToken: !!paymentOrder.formToken
+    });
+
     res.status(200).json({
       success: true,
       message: 'Orden de upgrade creada',
@@ -219,10 +225,14 @@ exports.createUpgradeOrder = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error en createUpgradeOrder:', error);
+    console.error('❌ Error en createUpgradeOrder:', {
+      message: error.message,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n')
+    });
     res.status(500).json({
       success: false,
-      message: error.message || 'Error al crear orden de upgrade'
+      message: error.message || 'Error al crear orden de upgrade',
+      error: error.message
     });
   }
 };

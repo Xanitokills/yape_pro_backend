@@ -389,6 +389,7 @@ exports.createUpgradeOrder = async ({ userId, planId, amount, paymentMethod }) =
     if (paymentMethod === 'card') {
       // Generar token de pago con Izipay
       try {
+        console.log('🔵 Generando token de pago para tarjeta...');
         const tokenData = await izipayService.createPaymentToken({
           amount,
           orderId: reference,
@@ -399,12 +400,15 @@ exports.createUpgradeOrder = async ({ userId, planId, amount, paymentMethod }) =
           },
         });
 
+        console.log('✅ Token generado:', { hasFormToken: !!tokenData.formToken });
         paymentData.formToken = tokenData.formToken;
         paymentData.publicKey = tokenData.publicKey;
       } catch (error) {
-        console.error('Error generando token Izipay:', error);
+        console.error('⚠️ Error generando token Izipay:', error.message);
         // En TEST mode, retornar token simulado
+        console.log('📝 Usando token de prueba');
         paymentData.formToken = `TEST_TOKEN_${reference}`;
+        paymentData.publicKey = 'TEST_PUBLIC_KEY';
       }
     } else if (paymentMethod === 'yape' || paymentMethod === 'plin') {
       // Generar QR (simulado en TEST)
