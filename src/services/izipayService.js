@@ -50,19 +50,17 @@ exports.createPaymentToken = async ({ amount, orderId, currency = 'PEN', custome
       orderId,
       currency,
       email: customer.email,
-      mode: IZIPAY_CONFIG.mode
+      mode: IZIPAY_CONFIG.mode,
+      shopId: IZIPAY_CONFIG.shopId,
+      hasPassword: !!IZIPAY_CONFIG.password,
+      hasPublicKey: !!IZIPAY_CONFIG.publicKey
     });
 
     // Verificar que las credenciales estén configuradas
-    if (!IZIPAY_CONFIG.shopId || !IZIPAY_CONFIG.password) {
-      console.warn('⚠️ Credenciales de IziPay no configuradas, usando modo de prueba');
-      // Retornar un token de prueba para desarrollo
-      return {
-        success: true,
-        formToken: `TEST_TOKEN_${orderId}_${Date.now()}`,
-        publicKey: IZIPAY_CONFIG.publicKey || 'TEST_PUBLIC_KEY',
-        checkoutUrl: `https://secure.micuentaweb.pe/static/js/krypton-client/V4.0/ext/minimal-payment-form-1.0.js`,
-      };
+    if (!IZIPAY_CONFIG.shopId || !IZIPAY_CONFIG.password || !IZIPAY_CONFIG.publicKey) {
+      const error = 'Credenciales de IziPay incompletas. Verifica IZIPAY_SHOP_ID, IZIPAY_PASSWORD_TEST y IZIPAY_PUBLIC_KEY_TEST';
+      console.error('❌', error);
+      throw new Error(error);
     }
 
     const paymentData = {
