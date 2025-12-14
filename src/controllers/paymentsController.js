@@ -458,9 +458,23 @@ exports.renderIzipayForm = async (req, res) => {
             
             KR.onSubmit(function(event) {
                 if (event.clientAnswer && event.clientAnswer.orderStatus === 'PAID') {
-                    // Redirigir a éxito
-                    window.location.href = 'izipay://success?orderId=' + 
-                        (event.clientAnswer.orderDetails ? event.clientAnswer.orderDetails.orderId : '');
+                    console.log('✅ Pago exitoso:', event.clientAnswer);
+                    
+                    // Notificar al parent window (dashboard)
+                    if (window.parent) {
+                        window.parent.postMessage({
+                            type: 'IZIPAY_PAYMENT_SUCCESS',
+                            reference: '${reference}',
+                            orderStatus: 'PAID',
+                            orderId: event.clientAnswer.orderDetails ? event.clientAnswer.orderDetails.orderId : '${reference}'
+                        }, '*');
+                    }
+                    
+                    // Mostrar mensaje de éxito
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('loading').innerHTML = '✅ ¡Pago exitoso! Actualizando tu plan...';
+                    
+                    return true;
                 }
                 return true;
             });
