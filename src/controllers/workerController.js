@@ -346,9 +346,11 @@ async function removeWorker(req, res) {
         message: 'No tienes permiso para eliminar este trabajador'
       });
     }
-    
-    // Eliminar de la tabla workers
-    const { data: deletedData, error: deleteError, count } = await supabase
+
+    const workerUserId = worker.user_id;
+
+    // Eliminar primero de la tabla workers
+    const { data: deletedData, error: deleteError } = await supabase
       .from('workers')
       .delete()
       .eq('id', workerId)
@@ -359,17 +361,12 @@ async function removeWorker(req, res) {
       throw deleteError;
     }
     
-    console.log(`✅ Resultado de eliminación:`, {
-      deletedData,
-      count,
-      deletedRows: deletedData?.length || 0
-    });
+    console.log(`✅ Worker eliminado de tabla workers`);
     
     // Verificar que realmente se eliminó
     if (!deletedData || deletedData.length === 0) {
       console.log(`⚠️ No se eliminó ningún registro - posible problema de RLS`);
       
-      // Verificar si el registro aún existe
       const { data: stillExists } = await supabase
         .from('workers')
         .select('id')
@@ -385,8 +382,36 @@ async function removeWorker(req, res) {
         });
       }
     }
+
+    // Ahora eliminar el usuario completamente
+    console.log(`🗑️ Eliminando usuario ${workerUserId} del sistema...`);
     
-    console.log(`✅ Trabajador ${workerId} eliminado exitosamente`);
+    // Eliminar FCM tokens del usuario
+    await supabase
+      .from('fcm_tokens')
+      .delete()
+      .eq('user_id', workerUserId);
+
+    // Eliminar refresh tokens del usuario
+    await supabase
+      .from('refresh_tokens')
+      .delete()
+      .eq('user_id', workerUserId);
+
+    // Eliminar el usuario
+    const { error: userDeleteError } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', workerUserId);
+
+    if (userDeleteError) {
+      console.error('⚠️ Error al eliminar usuario:', userDeleteError);
+      // No fallar si el usuario no se puede eliminar, ya eliminamos la relación worker
+    } else {
+      console.log(`✅ Usuario ${workerUserId} eliminado completamente del sistema`);
+    }
+    
+    console.log(`✅ Trabajador ${workerId} y usuario eliminados exitosamente`);
     
     res.json({
       success: true,
