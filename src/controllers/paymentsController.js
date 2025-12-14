@@ -193,20 +193,23 @@ exports.createUpgradeOrder = async (req, res) => {
       });
     }
 
-    const { plan_id, amount, payment_method } = req.body;
+    // Aceptar tanto planId como plan_id para compatibilidad
+    const { planId, plan_id, amount, paymentMethod, payment_method } = req.body;
+    const finalPlanId = planId || plan_id;
+    const finalPaymentMethod = paymentMethod || payment_method;
 
-    if (!plan_id || !amount || !payment_method) {
+    if (!finalPlanId || !amount || !finalPaymentMethod) {
       return res.status(400).json({
         success: false,
-        message: 'Faltan datos requeridos: plan_id, amount, payment_method'
+        message: 'Faltan datos requeridos: planId, amount, paymentMethod'
       });
     }
 
     const paymentOrder = await paymentService.createUpgradeOrder({
       userId,
-      planId: plan_id,
+      planId: finalPlanId,
       amount,
-      paymentMethod: payment_method
+      paymentMethod: finalPaymentMethod
     });
 
     res.status(200).json({
