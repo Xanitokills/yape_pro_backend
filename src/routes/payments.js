@@ -16,8 +16,9 @@ router.get('/status/:reference', paymentsController.checkPaymentStatus);
 // Webhook para confirmación de pago (desde proveedor)
 router.post('/webhook', paymentsController.handleWebhook);
 
-// Webhook específico de Izipay
+// Webhook específico de Izipay (soporta GET y POST porque IziPay puede usar ambos)
 router.post('/webhook/izipay', paymentsController.handleIzipayWebhook);
+router.get('/webhook/izipay', paymentsController.handleIzipayWebhook);
 
 // Upgrade endpoints (requieren autenticación)
 router.post('/create-upgrade-order', authenticateToken, paymentsController.createUpgradeOrder);

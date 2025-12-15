@@ -132,15 +132,16 @@ exports.handleWebhook = async (req, res) => {
  */
 exports.handleIzipayWebhook = async (req, res) => {
   try {
-    console.log('📥 Izipay Webhook recibido:', JSON.stringify(req.body, null, 2));
+    const isGet = req.method === 'GET';
+    console.log(`📥 Izipay Webhook recibido (${req.method}):`, isGet ? req.query : req.body);
     
-    const { kr_answer, kr_hash, kr_hash_algorithm } = req.body;
+    // IziPay puede enviar datos en GET (query params) o POST (body)
+    const data = isGet ? req.query : req.body;
+    const { kr_answer, kr_hash, kr_hash_algorithm } = data;
     
     if (!kr_answer) {
-      return res.status(400).json({
-        success: false,
-        message: 'Datos de webhook inválidos'
-      });
+      console.log('⚠️ Webhook sin kr_answer, respondiendo OK para evitar reintentos');
+      return res.status(200).send('OK');
     }
 
     // Parsear respuesta de Izipay
