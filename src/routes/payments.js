@@ -24,6 +24,11 @@ router.post('/complete-upgrade', authenticateToken, paymentsController.completeU
 // Página de pago Izipay (para WebView)
 router.get('/izipay-form', paymentsController.renderIzipayForm);
 
+// Callbacks de IziPay después del pago
+const izipayCallbacks = require('../controllers/izipayCallbacks');
+router.post('/izipay-success', izipayCallbacks.handleIzipaySuccess);
+router.post('/izipay-refused', izipayCallbacks.handleIzipayRefused);
+
 // [ADMIN] Listar todos los pagos
 router.get('/list', authenticateToken, paymentsController.listPayments);
 
