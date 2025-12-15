@@ -4,6 +4,9 @@ const router = express.Router();
 const paymentsController = require('../controllers/paymentsController');
 const { authenticateToken } = require('../middleware/auth');
 
+// [DEBUG] Verificar configuración de IziPay
+router.get('/verify-izipay-config', paymentsController.verifyIzipayConfig);
+
 // Crear orden de pago (genera QR para Yape/Plin o datos bancarios)
 router.post('/create-order', paymentsController.createPaymentOrder);
 

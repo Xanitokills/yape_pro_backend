@@ -2,6 +2,29 @@
 const paymentService = require('../services/paymentService');
 
 /**
+ * Verificar configuración de IziPay (endpoint de diagnóstico)
+ * GET /api/payments/verify-izipay-config
+ */
+exports.verifyIzipayConfig = (req, res) => {
+  const mode = process.env.IZIPAY_MODE || 'TEST';
+  const shopId = process.env.IZIPAY_SHOP_ID;
+  const password = mode === 'TEST' ? process.env.IZIPAY_PASSWORD_TEST : process.env.IZIPAY_PASSWORD_PROD;
+  const publicKey = mode === 'TEST' ? process.env.IZIPAY_PUBLIC_KEY_TEST : process.env.IZIPAY_PUBLIC_KEY_PROD;
+  const hmacKey = mode === 'TEST' ? process.env.IZIPAY_HMAC_SHA256_TEST : process.env.IZIPAY_HMAC_SHA256_PROD;
+
+  res.json({
+    mode,
+    config: {
+      shopId: shopId ? '✅ Configurado' : '❌ Falta',
+      password: password ? '✅ Configurado' : '❌ Falta',
+      publicKey: publicKey ? `✅ ${publicKey.substring(0, 30)}...` : '❌ Falta',
+      hmacKey: hmacKey ? '✅ Configurado' : '❌ Falta',
+    },
+    allConfigured: !!(shopId && password && publicKey && hmacKey)
+  });
+};
+
+/**
  * Crear orden de pago
  * POST /api/payments/create-order
  */
@@ -358,6 +381,7 @@ exports.renderIzipayForm = async (req, res) => {
     <link rel="stylesheet" href="https://static.micuentaweb.pe/static/js/krypton-client/V4.0/ext/classic-reset.css">
     <script src="https://static.micuentaweb.pe/static/js/krypton-client/V4.0/stable/kr-payment-form.min.js" 
             kr-public-key="${publicKey}"
+            kr-language="es-ES"
             kr-post-url-success="https://yapeprobackend-production.up.railway.app/api/payments/izipay-success"
             kr-post-url-refused="https://yapeprobackend-production.up.railway.app/api/payments/izipay-refused"></script>
     <style>
