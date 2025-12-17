@@ -144,6 +144,72 @@ function parse(text) {
   // Normalizar texto
   const normalizedText = text.toLowerCase().trim();
   
+  // 🚫 FILTRO 1: RECHAZAR PAGOS SALIENTES (que TÚ enviaste)
+  const outgoingPatterns = [
+    /enviaste\s+s\//i,
+    /le\s+(yapeaste|yapeast)\s+s\//i,
+    /pagaste\s+s\//i,
+    /le\s+(plineaste|plineast)\s+s\//i,
+    /transferiste\s+s\//i,
+    /enviaste\s+un\s+pago/i,
+    /hiciste\s+un\s+pago/i,
+    /realizaste\s+un\s+pago/i
+  ];
+  
+  // Verificar si es un pago saliente
+  for (const pattern of outgoingPatterns) {
+    if (pattern.test(normalizedText)) {
+      console.log('🚫 PAGO SALIENTE DETECTADO - NO SE PROCESARÁ');
+      console.log('   Este es un pago que TÚ enviaste, no uno que recibiste');
+      return null;
+    }
+  }
+  
+  // 🚫 FILTRO 2: RECHAZAR PROMOCIONES Y SPAM
+  const spamPatterns = [
+    /aprovecha/i,
+    /descuento/i,
+    /promoción|promocion/i,
+    /oferta/i,
+    /gana\s+(hasta|un|dinero|puntos)/i,
+    /sorteo/i,
+    /premio/i,
+    /actualiza\s+(tu\s+)?app/i,
+    /nueva\s+versión|nueva\s+version/i,
+    /recordatorio/i,
+    /pendiente/i,
+    /vence/i,
+    /protege\s+tu\s+cuenta/i,
+    /seguridad/i,
+    /te\s+invita/i,
+    /conoce/i,
+    /descubre/i,
+    /nuevo.*en\s+yape/i,
+    /activa/i,
+    /configura/i,
+    /completa\s+tu\s+perfil/i,
+    /verifica\s+tu/i,
+    /confirma\s+tu/i
+  ];
+  
+  // Verificar si es spam/promoción
+  for (const pattern of spamPatterns) {
+    if (pattern.test(normalizedText)) {
+      console.log('🚫 SPAM/PROMOCIÓN DETECTADO - NO SE PROCESARÁ');
+      console.log('   Esta es una notificación promocional, no un pago real');
+      return null;
+    }
+  }
+  
+  // 🚫 FILTRO 3: VERIFICAR QUE CONTENGA UN MONTO
+  if (!/s\/\s*\d/i.test(normalizedText)) {
+    console.log('🚫 NO CONTIENE MONTO - NO SE PROCESARÁ');
+    console.log('   La notificación no tiene un monto válido (S/ XX)');
+    return null;
+  }
+  
+  console.log('✅ Notificación validada - es un pago entrante real');
+  
   // Intentar parsers específicos primero
   if (normalizedText.includes('yape')) {
     const result = parseYape(normalizedText);
