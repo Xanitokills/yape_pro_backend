@@ -608,6 +608,32 @@ const deleteOwner = async (req, res) => {
     console.log(`   - Trabajadores: ${workersCount}`);
     console.log(`   - Notificaciones: ${notificationsCount}`);
 
+    // Eliminar trabajadores de las tiendas del owner
+    if (storeIds.length > 0) {
+      const { error: workersDeleteError } = await supabase
+        .from('workers')
+        .delete()
+        .in('store_id', storeIds);
+
+      if (workersDeleteError) {
+        console.error('⚠️ Error al eliminar trabajadores (continuando):', workersDeleteError);
+      } else {
+        console.log(`✅ ${workersCount} trabajadores eliminados`);
+      }
+
+      // Eliminar notificaciones
+      const { error: notificationsDeleteError } = await supabase
+        .from('notifications')
+        .delete()
+        .in('store_id', storeIds);
+
+      if (notificationsDeleteError) {
+        console.error('⚠️ Error al eliminar notificaciones (continuando):', notificationsDeleteError);
+      } else {
+        console.log(`✅ ${notificationsCount} notificaciones eliminadas`);
+      }
+    }
+
     // Eliminar pagos del usuario primero (para evitar FK constraint)
     const { error: paymentsError } = await supabase
       .from('payments')
@@ -640,7 +666,21 @@ const deleteOwner = async (req, res) => {
       console.error('⚠️ Error al eliminar subscription_history (continuando):', historyError);
     }
 
-    // Eliminar usuario (CASCADE eliminará stores, workers, notifications, fcm_tokens, refresh_tokens)
+    // Eliminar tiendas del usuario
+    if (storeIds.length > 0) {
+      const { error: storesError } = await supabase
+        .from('stores')
+        .delete()
+        .eq('owner_id', userId);
+
+      if (storesError) {
+        console.error('⚠️ Error al eliminar tiendas (continuando):', storesError);
+      } else {
+        console.log(`✅ ${stores?.length || 0} tiendas eliminadas`);
+      }
+    }
+
+    // Eliminar usuario (también eliminará fcm_tokens, refresh_tokens por CASCADE)
     const { error: deleteError } = await supabase
       .from('users')
       .delete()

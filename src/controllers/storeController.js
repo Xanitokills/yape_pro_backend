@@ -287,7 +287,29 @@ async function deleteStore(req, res) {
       });
     }
     
-    // Eliminar tienda (cascade eliminará workers y notificaciones)
+    // Primero eliminar todos los trabajadores de esta tienda
+    const { error: workersError } = await supabase
+      .from('workers')
+      .delete()
+      .eq('store_id', storeId);
+    
+    if (workersError) {
+      console.error('Error al eliminar trabajadores:', workersError);
+      // Continuar de todos modos
+    }
+    
+    // Eliminar notificaciones de esta tienda
+    const { error: notificationsError } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('store_id', storeId);
+    
+    if (notificationsError) {
+      console.error('Error al eliminar notificaciones:', notificationsError);
+      // Continuar de todos modos
+    }
+    
+    // Finalmente eliminar la tienda
     const { error: deleteError } = await supabase
       .from('stores')
       .delete()
