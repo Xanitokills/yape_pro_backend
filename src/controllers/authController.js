@@ -45,6 +45,41 @@ async function register(req, res) {
     // Limpiar teléfono
     const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
     
+    // Detectar país desde el código de teléfono
+    const countryMap = {
+      '51': 'PE',    // Perú
+      '54': 'AR',    // Argentina
+      '591': 'BO',   // Bolivia
+      '55': 'BR',    // Brasil
+      '56': 'CL',    // Chile
+      '57': 'CO',    // Colombia
+      '506': 'CR',   // Costa Rica
+      '53': 'CU',    // Cuba
+      '593': 'EC',   // Ecuador
+      '503': 'SV',   // El Salvador
+      '34': 'ES',    // España
+      '502': 'GT',   // Guatemala
+      '504': 'HN',   // Honduras
+      '52': 'MX',    // México
+      '505': 'NI',   // Nicaragua
+      '507': 'PA',   // Panamá
+      '595': 'PY',   // Paraguay
+      '1809': 'DO',  // República Dominicana
+      '598': 'UY',   // Uruguay
+      '58': 'VE'     // Venezuela
+    };
+    
+    let detectedCountry = null;
+    if (cleanPhone) {
+      // Intentar detectar país por código
+      for (const [code, country] of Object.entries(countryMap)) {
+        if (cleanPhone.startsWith(code)) {
+          detectedCountry = country;
+          break;
+        }
+      }
+    }
+    
     // Para owners, verificar que el teléfono esté verificado con Firebase
     if (role === 'owner' && cleanPhone) {
       // Verificar token de Firebase
@@ -154,9 +189,10 @@ async function register(req, res) {
         password_hash,
         full_name,
         phone: cleanPhone,
-        role
+        role,
+        country: detectedCountry
       })
-      .select('id, email, full_name, phone, role, created_at')
+      .select('id, email, full_name, phone, role, country, created_at')
       .single();
     
     if (error) {
@@ -592,6 +628,22 @@ async function registerWorker(req, res) {
     
     console.log('✅ Código válido para:', worker.temp_full_name);
     
+    // Detectar país desde el código de teléfono
+    const countryMap = {
+      '51': 'PE', '54': 'AR', '591': 'BO', '55': 'BR', '56': 'CL',
+      '57': 'CO', '506': 'CR', '53': 'CU', '593': 'EC', '503': 'SV',
+      '34': 'ES', '502': 'GT', '504': 'HN', '52': 'MX', '505': 'NI',
+      '507': 'PA', '595': 'PY', '1809': 'DO', '598': 'UY', '58': 'VE'
+    };
+    
+    let detectedCountry = null;
+    for (const [code, country] of Object.entries(countryMap)) {
+      if (phone.startsWith('+' + code) || phone.startsWith(code)) {
+        detectedCountry = country;
+        break;
+      }
+    }
+    
     // Verificar que no exista otro worker activo con este teléfono en otra tienda
     const { data: existingWorkerOtherStore } = await supabase
       .from('workers')
@@ -654,9 +706,10 @@ async function registerWorker(req, res) {
         password_hash,
         full_name: worker.temp_full_name,
         phone: phone,
-        role: 'worker'
+        role: 'worker',
+        country: detectedCountry
       })
-      .select('id, email, full_name, phone, role')
+      .select('id, email, full_name, phone, role, country')
       .single();
     
     if (userError) {
