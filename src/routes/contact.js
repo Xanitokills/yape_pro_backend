@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { supabase } = require('../config/database');
+const { contactLimiter } = require('../middleware/rateLimiter');
 
 /**
  * POST /api/contact-sales
  * Endpoint para recibir solicitudes de contacto del plan empresarial
  */
-router.post('/contact-sales', async (req, res) => {
+router.post('/contact-sales', contactLimiter, async (req, res) => {
   try {
     const {
       companyName,

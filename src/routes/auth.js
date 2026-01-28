@@ -4,10 +4,11 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
 const { authValidation } = require('../middleware/validation');
+const { loginLimiter, registerLimiter } = require('../middleware/rateLimiter');
 
-// Rutas públicas
-router.post('/register', authValidation.register, authController.register);
-router.post('/login', authValidation.login, authController.login);
+// Rutas públicas con rate limiting
+router.post('/register', registerLimiter, authValidation.register, authController.register);
+router.post('/login', loginLimiter, authValidation.login, authController.login);
 router.post('/register-worker', authController.registerWorker);
 
 // Rutas protegidas (requieren autenticación)

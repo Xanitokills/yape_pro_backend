@@ -47,15 +47,27 @@ function validateEnv() {
   const missing = required.filter(key => !process.env[key]);
 
   if (missing.length > 0) {
-    throw new Error(`⚠️ Faltan variables de entorno requeridas: ${missing.join(', ')}`);
+    throw new Error(`⚠️ Faltan variables de entorno requeridas: ${missing.join(', ')}\nRevisa el archivo .env.example`);
   }
 
   // Validar JWT_SECRET tiene suficiente longitud
   if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
-    console.warn('⚠️ JWT_SECRET debería tener al menos 32 caracteres para mayor seguridad');
+    throw new Error('⚠️ SEGURIDAD: JWT_SECRET debe tener al menos 32 caracteres. Genera uno seguro con: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
   }
 
-  console.log('✅ Variables de entorno validadas');
+  // Validar CORS en producción
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.CORS_ORIGIN || process.env.CORS_ORIGIN === '*') {
+      throw new Error('⚠️ SEGURIDAD: CORS_ORIGIN debe estar configurado en producción. No usar "*"');
+    }
+    
+    // Verificar que test routes están deshabilitadas
+    if (process.env.ENABLE_TEST_ROUTES === 'true' || process.env.ENABLE_TEST_UI === 'true') {
+      throw new Error('⚠️ SEGURIDAD: ENABLE_TEST_ROUTES y ENABLE_TEST_UI deben estar deshabilitadas en producción');
+    }
+  }
+
+  console.log('✅ Variables de entorno validadas correctamente');
 }
 
 // Validar al cargar el módulo

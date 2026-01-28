@@ -7,8 +7,10 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
+const { adminLimiter } = require('../middleware/rateLimiter');
 
 // Middleware: todas las rutas requieren autenticación y rol super_admin
+router.use(adminLimiter); // Rate limiting adicional para admin
 router.use(authenticateToken);
 router.use(authorizeRoles('super_admin'));
 
