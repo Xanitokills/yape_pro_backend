@@ -175,8 +175,8 @@ const workerValidation = {
       .trim()
       .notEmpty()
       .withMessage('El teléfono es requerido')
-      .matches(/^[0-9]{9}$/)
-      .withMessage('El teléfono debe tener exactamente 9 dígitos'),
+      .matches(/^\+\d{1,4}\d{8,11}$/)
+      .withMessage('El teléfono debe incluir el código de país (ej: +51987654321) y tener entre 8 y 11 dígitos'),
     body('position')
       .optional()
       .trim()
