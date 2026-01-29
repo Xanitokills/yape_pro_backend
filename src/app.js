@@ -23,7 +23,11 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
-// 🛡️ Security Headers - Helmet.js
+// � Trust proxy - Required for Railway/Heroku/Render to get real client IP
+// This allows express-rate-limit to work correctly behind reverse proxies
+app.set('trust proxy', 1);
+
+// �🛡️ Security Headers - Helmet.js
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
