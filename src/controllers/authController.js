@@ -252,15 +252,17 @@ async function login(req, res) {
     if (email) {
       query = query.eq('email', email.toLowerCase());
     } else {
-      query = query.eq('phone', phone);
+      // Normalizar teléfono: buscar con y sin el prefijo +
+      const cleanPhone = phone.replace(/\D/g, ''); // Solo números
+      query = query.or(`phone.eq.${phone},phone.eq.+${cleanPhone},phone.eq.${cleanPhone}`);
     }
     
-    const { data: user, error } = await query.single();
+    const { data: user, error } = await query.maybeSingle();
     
     if (error || !user) {
       return res.status(401).json({
         error: 'Credenciales inválidas',
-        message: 'Email o contraseña incorrectos'
+        message: 'Email/teléfono o contraseña incorrectos'
       });
     }
     
