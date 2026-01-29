@@ -345,7 +345,8 @@ async function login(req, res) {
           email: user.email,
           full_name: user.full_name,
           phone: user.phone,
-          role: user.role
+          role: user.role,
+          country: user.country || 'PE' // Incluir país (default Perú)
         },
         token
       }
