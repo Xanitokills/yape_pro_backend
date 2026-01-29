@@ -245,21 +245,45 @@ async function login(req, res) {
     }
     
     // Buscar usuario por email O teléfono
-    let query = supabase
-      .from('users')
-      .select('id, email, password_hash, full_name, phone, role, is_active');
+    let user;
     
     if (email) {
-      query = query.eq('email', email.toLowerCase());
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, password_hash, full_name, phone, role, is_active')
+        .eq('email', email.toLowerCase())
+        .maybeSingle();
+      
+      if (error) throw error;
+      user = data;
     } else {
-      // Normalizar teléfono: buscar con y sin el prefijo +
-      const cleanPhone = phone.replace(/\D/g, ''); // Solo números
-      query = query.or(`phone.eq.${phone},phone.eq.+${cleanPhone},phone.eq.${cleanPhone}`);
+      // Normalizar teléfono de entrada
+      let searchPhone = phone.trim();
+      
+      // Si NO tiene +, asumimos que es un número local y agregamos el prefijo del país del usuario
+      // Primero intentamos buscar exacto
+      let { data, error } = await supabase
+        .from('users')
+        .select('id, email, password_hash, full_name, phone, role, is_active, country')
+        .eq('phone', searchPhone)
+        .maybeSingle();
+      
+      // Si no se encontró y el número NO tiene +, intentar con + al inicio
+      if (!data && !searchPhone.startsWith('+')) {
+        const { data: data2 } = await supabase
+          .from('users')
+          .select('id, email, password_hash, full_name, phone, role, is_active, country')
+          .eq('phone', `+${searchPhone}`)
+          .maybeSingle();
+        
+        data = data2;
+      }
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      user = data;
     }
     
-    const { data: user, error } = await query.maybeSingle();
-    
-    if (error || !user) {
+    if (!user) {
       return res.status(401).json({
         error: 'Credenciales inválidas',
         message: 'Email/teléfono o contraseña incorrectos'
