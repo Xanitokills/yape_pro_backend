@@ -19,11 +19,12 @@ const generalLimiter = rateLimit({
 
 /**
  * Rate Limiter para Login
- * 5 intentos por 15 minutos
+ * 20 intentos por 15 minutos (aumentado para testing)
+ * TODO: Reducir a 5 en producción
  */
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   message: {
     success: false,
     error: 'Demasiados intentos de login. Intenta de nuevo en 15 minutos.',
