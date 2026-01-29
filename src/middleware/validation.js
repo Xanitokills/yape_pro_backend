@@ -58,8 +58,8 @@ const authValidation = {
       .normalizeEmail(),
     body('phone')
       .optional({ checkFalsy: true })
-      .matches(/^[0-9]{9}$/)
-      .withMessage('Teléfono debe tener 9 dígitos'),
+      .matches(/^[\+]?[0-9]{8,15}$/)
+      .withMessage('Teléfono inválido (8-15 dígitos, puede incluir +)'),
     body('password')
       .notEmpty()
       .withMessage('La contraseña es requerida'),
