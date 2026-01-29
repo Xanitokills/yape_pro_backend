@@ -278,16 +278,7 @@ async function login(req, res) {
         data = data2;
       }
       
-      // Intento 3: Buscar por "termina con" (últimos dígitos)
-      if (!data) {
-        const { data: data3 } = await supabase
-          .from('users')
-          .select('id, email, password_hash, full_name, phone, role, is_active, country')
-          .like('phone', `%${searchPhone}`)
-          .maybeSingle();
-        
-        data = data3;
-      }
+      // NO hacer búsqueda por "termina con" para evitar ambigüedad entre países
       
       if (error && error.code !== 'PGRST116') throw error;
       user = data;
