@@ -260,15 +260,14 @@ async function login(req, res) {
       // Normalizar teléfono de entrada
       let searchPhone = phone.trim();
       
-      // Si NO tiene +, asumimos que es un número local y agregamos el prefijo del país del usuario
-      // Primero intentamos buscar exacto
+      // Intento 1: Buscar exacto
       let { data, error } = await supabase
         .from('users')
         .select('id, email, password_hash, full_name, phone, role, is_active, country')
         .eq('phone', searchPhone)
         .maybeSingle();
       
-      // Si no se encontró y el número NO tiene +, intentar con + al inicio
+      // Intento 2: Si no se encontró y NO tiene +, intentar con +
       if (!data && !searchPhone.startsWith('+')) {
         const { data: data2 } = await supabase
           .from('users')
@@ -277,6 +276,17 @@ async function login(req, res) {
           .maybeSingle();
         
         data = data2;
+      }
+      
+      // Intento 3: Buscar por "termina con" (últimos dígitos)
+      if (!data) {
+        const { data: data3 } = await supabase
+          .from('users')
+          .select('id, email, password_hash, full_name, phone, role, is_active, country')
+          .like('phone', `%${searchPhone}`)
+          .maybeSingle();
+        
+        data = data3;
       }
       
       if (error && error.code !== 'PGRST116') throw error;
