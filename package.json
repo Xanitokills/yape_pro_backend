@@ -1,7 +1,7 @@
 {
   "name": "yape-pro-backend",
   "version": "1.0.0",
-  "description": "Backend API para Yape Pro",
+  "description": "Backend API para Pago Seguro",
   "main": "server.js",
   "engines": {
     "node": ">=20.0.0"

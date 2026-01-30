@@ -20,7 +20,7 @@ async function sendPasswordResetEmail(email, code, userName = '') {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Código de recuperación de contraseña - Yape Pro',
+    subject: 'Código de recuperación de contraseña - Pago Seguro',
     html: `
       <!DOCTYPE html>
       <html>
@@ -39,7 +39,7 @@ async function sendPasswordResetEmail(email, code, userName = '') {
             background-color: #f9f9f9;
           }
           .header {
-            background-color: #4CAF50;
+            background-color: #635bff;
             color: white;
             padding: 20px;
             text-align: center;
@@ -53,10 +53,10 @@ async function sendPasswordResetEmail(email, code, userName = '') {
           .code {
             font-size: 32px;
             font-weight: bold;
-            color: #4CAF50;
+            color: #635bff;
             text-align: center;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-color: #f6f9fc;
             border-radius: 5px;
             letter-spacing: 5px;
             margin: 20px 0;
@@ -80,7 +80,7 @@ async function sendPasswordResetEmail(email, code, userName = '') {
       <body>
         <div class="container">
           <div class="header">
-            <h1>Yape Pro</h1>
+            <h1>Pago Seguro</h1>
           </div>
           <div class="content">
             <h2>Recuperación de Contraseña</h2>
@@ -91,12 +91,12 @@ async function sendPasswordResetEmail(email, code, userName = '') {
             <p>Este código es válido por <strong>15 minutos</strong>.</p>
             <p>Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
             <div class="warning">
-              <strong>⚠️ Importante:</strong> Nunca compartas este código con nadie. El equipo de Yape Pro nunca te pedirá este código.
+              <strong>⚠️ Importante:</strong> Nunca compartas este código con nadie. El equipo de Pago Seguro nunca te pedirá este código.
             </div>
           </div>
           <div class="footer">
             <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-            <p>&copy; ${new Date().getFullYear()} Yape Pro. Todos los derechos reservados.</p>
+            <p>&copy; ${new Date().getFullYear()} Pago Seguro. Todos los derechos reservados.</p>
           </div>
         </div>
       </body>
