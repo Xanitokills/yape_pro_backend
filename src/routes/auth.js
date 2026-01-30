@@ -11,6 +11,9 @@ router.post('/register', registerLimiter, authValidation.register, authControlle
 router.post('/login', loginLimiter, authValidation.login, authController.login);
 router.post('/register-worker', authController.registerWorker);
 
+// Google Sign-In
+router.post('/google', loginLimiter, authController.googleSignIn);
+
 // Rutas protegidas (requieren autenticación)
 router.get('/me', authenticateToken, authController.getProfile);
 router.put('/profile', authenticateToken, authController.updateProfile);

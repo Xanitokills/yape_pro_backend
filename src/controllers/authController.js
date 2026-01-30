@@ -66,7 +66,8 @@ async function register(req, res) {
       '595': 'PY',   // Paraguay
       '1809': 'DO',  // República Dominicana
       '598': 'UY',   // Uruguay
-      '58': 'VE'     // Venezuela
+      '58': 'VE',    // Venezuela
+      '1': 'US'      // Estados Unidos
     };
     
     let detectedCountry = null;
@@ -109,6 +110,8 @@ async function register(req, res) {
         const firebasePhoneClean = firebasePhone.replace(/\D/g, '');
         const expectedPhone = cleanPhone.startsWith('51') ? cleanPhone : `51${cleanPhone}`;
         
+        // Permitir coincidencia exacta o con prefijo
+        // Nota: Firebase devuelve formato internacional (+51999...), cleanPhone puede o no tenerlo
         if (!firebasePhoneClean.endsWith(cleanPhone) && firebasePhoneClean !== expectedPhone) {
           console.log(`❌ Teléfono no coincide: Firebase=${firebasePhoneClean}, Esperado=${expectedPhone}`);
           return res.status(400).json({
@@ -788,6 +791,173 @@ async function registerWorker(req, res) {
   }
 }
 
+/**
+ * Google Sign-In - Autenticación con Google
+ * POST /api/auth/google
+ */
+async function googleSignIn(req, res) {
+  try {
+    const { id_token, role = 'owner' } = req.body;
+    
+    if (!id_token) {
+      return res.status(400).json({
+        error: 'Token requerido',
+        message: 'El token de Google es requerido'
+      });
+    }
+    
+    // Verificar el token de Firebase
+    const admin = require('firebase-admin');
+    let decodedToken;
+    
+    try {
+      decodedToken = await admin.auth().verifyIdToken(id_token);
+    } catch (firebaseError) {
+      console.error('❌ Error verificando token Google:', firebaseError);
+      return res.status(401).json({
+        error: 'Token inválido',
+        message: 'El token de Google ha expirado o es inválido'
+      });
+    }
+    
+    const { email, name, picture, uid: firebaseUid } = decodedToken;
+    
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email requerido',
+        message: 'No se pudo obtener el email de la cuenta de Google'
+      });
+    }
+    
+    console.log(`🔐 Google Sign-In: ${email} (${name})`);
+    
+    // Buscar si el usuario ya existe por email
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, email, full_name, phone, role, country, is_active, created_at')
+      .eq('email', email.toLowerCase())
+      .single();
+    
+    if (existingUser) {
+      // Usuario existe - hacer login
+      if (!existingUser.is_active) {
+        return res.status(403).json({
+          error: 'Cuenta desactivada',
+          message: 'Tu cuenta ha sido desactivada. Contacta al soporte.'
+        });
+      }
+      
+      // Actualizar última conexión y foto si cambió
+      await supabase
+        .from('users')
+        .update({ 
+          last_login: new Date().toISOString(),
+          photo_url: picture || null
+        })
+        .eq('id', existingUser.id);
+      
+      // Generar token JWT
+      const token = generateToken(existingUser);
+      
+      console.log(`✅ Google Login exitoso: ${email}`);
+      
+      return res.json({
+        success: true,
+        message: 'Inicio de sesión exitoso',
+        isNewUser: false,
+        data: {
+          user: {
+            ...existingUser,
+            photo_url: picture
+          },
+          token
+        }
+      });
+    }
+    
+    // Usuario no existe - crear cuenta nueva
+    // Generar una contraseña aleatoria (no se usará porque entra con Google)
+    const randomPassword = require('crypto').randomBytes(32).toString('hex');
+    const password_hash = await bcrypt.hash(randomPassword, 10);
+    
+    // Crear usuario
+    const { data: newUser, error: createError } = await supabase
+      .from('users')
+      .insert({
+        email: email.toLowerCase(),
+        password_hash,
+        full_name: name || email.split('@')[0],
+        role: role,
+        google_uid: firebaseUid,
+        photo_url: picture,
+        is_active: true
+      })
+      .select('id, email, full_name, phone, role, country, photo_url, created_at')
+      .single();
+    
+    if (createError) {
+      console.error('❌ Error creando usuario Google:', createError);
+      return res.status(500).json({
+        error: 'Error al crear cuenta',
+        message: 'No se pudo crear la cuenta. Intenta de nuevo.'
+      });
+    }
+    
+    // Si es owner, crear tienda por defecto
+    if (role === 'owner') {
+      const storeName = name ? `Tienda de ${name.split(' ')[0]}` : 'Mi Tienda';
+      
+      await supabase
+        .from('stores')
+        .insert({
+          owner_id: newUser.id,
+          name: storeName,
+          is_active: true
+        });
+      
+      // Asignar plan Free por defecto
+      const { data: freePlan } = await supabase
+        .from('subscription_plans')
+        .select('id')
+        .eq('name', 'Free')
+        .single();
+      
+      if (freePlan) {
+        await supabase
+          .from('user_subscriptions')
+          .insert({
+            user_id: newUser.id,
+            plan_id: freePlan.id,
+            status: 'active',
+            started_at: new Date().toISOString()
+          });
+      }
+    }
+    
+    // Generar token JWT
+    const token = generateToken(newUser);
+    
+    console.log(`✅ Nueva cuenta Google creada: ${email}`);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Cuenta creada exitosamente',
+      isNewUser: true,
+      data: {
+        user: newUser,
+        token
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en googleSignIn:', error);
+    res.status(500).json({
+      error: 'Error del servidor',
+      message: 'No se pudo completar el inicio de sesión con Google'
+    });
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -795,5 +965,6 @@ module.exports = {
   updateProfile,
   changePassword,
   registerFCMToken,
-  registerWorker
+  registerWorker,
+  googleSignIn
 };

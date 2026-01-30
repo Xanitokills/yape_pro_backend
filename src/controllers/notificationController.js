@@ -301,7 +301,7 @@ async function createNotification(req, res) {
  */
 async function parseNotification(req, res) {
   try {
-    const { text, store_id } = req.body;
+    const { text, store_id, country } = req.body;
     
     if (!text) {
       return res.status(400).json({
@@ -310,8 +310,23 @@ async function parseNotification(req, res) {
       });
     }
     
-    // Parsear el texto
-    const parsed = notificationParser.parse(text);
+    // 🌎 Obtener el país del usuario si no se proporciona
+    let userCountry = country || 'PE'; // Por defecto Perú
+    
+    if (!country && req.userId) {
+      const { data: user } = await supabase
+        .from('users')
+        .select('country')
+        .eq('id', req.userId)
+        .single();
+      
+      if (user && user.country) {
+        userCountry = user.country;
+      }
+    }
+    
+    // Parsear el texto con el país del usuario
+    const parsed = notificationParser.parse(text, userCountry);
     
     if (!parsed) {
       return res.status(400).json({

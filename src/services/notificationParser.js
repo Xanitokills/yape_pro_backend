@@ -1,8 +1,21 @@
 // src/services/notificationParser.js
+/**
+ * DEPRECADO: Este archivo se mantiene por compatibilidad
+ * El nuevo sistema de parsers está en: src/services/parsers/
+ * 
+ * Para nuevos desarrollos, usar:
+ * const parser = require('./parsers');
+ * const result = parser.parse(text, country);
+ */
+
+// Importar nuevo sistema de parsers
+const newParser = require('./parsers');
 
 /**
  * Parsear notificaciones de Yape, Plin, BCP
  * Extrae: monto, nombre del remitente, fuente
+ * 
+ * @deprecated Usar newParser.parse(text, country) en su lugar
  */
 
 /**
@@ -299,5 +312,7 @@ module.exports = {
   parsePlin,
   parseBCP,
   parseGeneric,
-  getExamples
+  getExamples,
+  // Exportar nuevo sistema para migración gradual
+  newParser
 };
