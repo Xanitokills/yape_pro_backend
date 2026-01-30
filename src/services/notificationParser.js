@@ -7,16 +7,24 @@
 
 /**
  * Parsear notificación de Yape
- * Ejemplo: "Confirmación de Pago Yape! SANDRO ANTHONIONY SAAVEDRA CASTRO te envió un pago por S/ 1"
- * Ejemplo: "Recibiste S/ 50.00 de Juan Perez via Yape"
+ * Ejemplo Perú: "Confirmación de Pago Yape! SANDRO ANTHONIONY SAAVEDRA CASTRO te envió un pago por S/ 1"
+ * Ejemplo Bolivia: "QR DE CHOQUE ORTIZ JUAN GABRIEL te envió Bs. 0.30"
  */
 function parseYape(text) {
   // Patrones comunes de Yape
   const patterns = [
-    // Nuevo formato: "NOMBRE te envió un pago por S/ MONTO"
+    // Formato Bolivia: "QR DE NOMBRE te envió Bs. MONTO"
+    /qr\s+de\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)\s+te\s+envió\s+bs\.?\s*(\d+(?:\.\d{2})?)/i,
+    // Formato Bolivia sin QR: "NOMBRE te envió Bs. MONTO"
+    /^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)\s+te\s+envió\s+bs\.?\s*(\d+(?:\.\d{2})?)/im,
+    // Formato Bolivia con yapeo: "yapeo NOMBRE te envió Bs. MONTO"
+    /yapeo\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑa-záéíóúñ\s]+?)\s+te\s+envió\s+bs\.?\s*(\d+(?:\.\d{2})?)/i,
+    // Nuevo formato Perú: "NOMBRE te envió un pago por S/ MONTO"
     /yape!\s+([^!]+?)\s+te\s+envió\s+un\s+pago\s+por\s+s\/?\s*(\d+(?:\.\d{2})?)/i,
-    // Formato antiguo
-    /recibiste\s+s\/?\s*(\d+(?:\.\d{2})?)\s+de\s+([^\n]+?)(?:\s+via\s+yape)?/i,
+    // Formato antiguo Perú: "Recibiste S/ MONTO de NOMBRE"
+    /recibiste\s+s\/?\s*(\d+(?:\.\d{2})?)\s+de\s+([^\n]+?)(?:\s+via\s+yape|\.|$)/i,
+    // Formato Bolivia alternativo: "Recibiste Bs. MONTO de NOMBRE"
+    /recibiste\s+bs\.?\s*(\d+(?:\.\d{2})?)\s+de\s+([^\n]+?)(?:\s+via\s+yape|\.|$)/i,
     /yape.*?s\/?\s*(\d+(?:\.\d{2})?)\s+de\s+([^\n]+)/i,
     /(\d+(?:\.\d{2})?)\s+soles.*?de\s+([^\n]+)/i
   ];
@@ -25,15 +33,17 @@ function parseYape(text) {
     const pattern = patterns[i];
     const match = text.match(pattern);
     if (match) {
-      // Para el nuevo formato, nombre y monto están invertidos
-      if (i === 0) {
+      // Para formatos donde nombre viene primero: índice 0, 1, 2, 3
+      // Bolivia (0, 1, 2): "QR DE NOMBRE te envió Bs. MONTO", "NOMBRE te envió Bs. MONTO", "yapeo NOMBRE..."
+      // Perú (3): "NOMBRE te envió un pago por S/ MONTO"
+      if (i <= 3) {
         return {
           amount: parseFloat(match[2]),
           sender: match[1].trim(),
           source: 'yape'
         };
       }
-      // Para formatos antiguos
+      // Para formatos donde monto viene primero: índice 3, 4, 5, 6
       return {
         amount: parseFloat(match[1]),
         sender: match[2].trim(),
@@ -101,15 +111,15 @@ function parseBCP(text) {
  * Intentar detectar cualquier monto en el texto
  */
 function parseGeneric(text) {
-  // Buscar patrones generales de montos
-  const amountPattern = /s\/?\s*(\d+(?:\.\d{2})?)/i;
+  // Buscar patrones generales de montos (S/ para Perú, Bs. para Bolivia)
+  const amountPattern = /(s\/|bs\.)\s*(\d+(?:\.\d{2})?)/i;
   const match = text.match(amountPattern);
   
   if (!match) {
     return null;
   }
   
-  const amount = parseFloat(match[1]);
+  const amount = parseFloat(match[2]);
   
   // Intentar extraer nombre
   const namePatterns = [
@@ -146,11 +156,11 @@ function parse(text) {
   
   // 🚫 FILTRO 1: RECHAZAR PAGOS SALIENTES (que TÚ enviaste)
   const outgoingPatterns = [
-    /enviaste\s+s\//i,
-    /le\s+(yapeaste|yapeast)\s+s\//i,
-    /pagaste\s+s\//i,
-    /le\s+(plineaste|plineast)\s+s\//i,
-    /transferiste\s+s\//i,
+    /enviaste\s+(?:s\/|bs\.)/i,
+    /le\s+(yapeaste|yapeast)\s+(?:s\/|bs\.)/i,
+    /pagaste\s+(?:s\/|bs\.)/i,
+    /le\s+(plineaste|plineast)\s+(?:s\/|bs\.)/i,
+    /transferiste\s+(?:s\/|bs\.)/i,
     /enviaste\s+un\s+pago/i,
     /hiciste\s+un\s+pago/i,
     /realizaste\s+un\s+pago/i
@@ -167,6 +177,7 @@ function parse(text) {
   
   // 🚫 FILTRO 2: RECHAZAR PROMOCIONES Y SPAM
   const spamPatterns = [
+    // Palabras de marketing
     /aprovecha/i,
     /descuento/i,
     /promoción|promocion/i,
@@ -174,6 +185,20 @@ function parse(text) {
     /gana\s+(hasta|un|dinero|puntos)/i,
     /sorteo/i,
     /premio/i,
+    // Ofertas de productos (palabras clave antes del monto)
+    /productos?\s+(?:desde|a|por|hasta)/i,
+    /compra\s+(?:ahora|ya|con)/i,
+    /pide\s+(?:ahora|ya)/i,
+    /paga\s+con\s+yape/i,
+    /tiene\s+productos?/i,
+    /zapatillas?\s+desde/i,
+    /combo\s+a\s+s\//i,
+    /pizza\s+(?:grande|mediana|familiar)\s+a\s+s\//i,
+    /desde\s+s\/.*hasta\s+s\//i,
+    // Rangos de precios ("desde S/" o "hasta S/")
+    /desde\s+(?:s\/|bs\.)/i,
+    /hasta\s+(?:s\/|bs\.)/i,
+    // Mensajes de apps
     /actualiza\s+(tu\s+)?app/i,
     /nueva\s+versión|nueva\s+version/i,
     /recordatorio/i,
@@ -201,33 +226,33 @@ function parse(text) {
     }
   }
   
-  // 🚫 FILTRO 3: VERIFICAR QUE CONTENGA UN MONTO
-  if (!/s\/\s*\d/i.test(normalizedText)) {
+  // 🚫 FILTRO 3: VERIFICAR QUE CONTENGA UN MONTO (S/ para Perú, Bs. para Bolivia)
+  if (!/(?:s\/|bs\.)\s*\d/i.test(normalizedText)) {
     console.log('🚫 NO CONTIENE MONTO - NO SE PROCESARÁ');
-    console.log('   La notificación no tiene un monto válido (S/ XX)');
+    console.log('   La notificación no tiene un monto válido (S/ XX o Bs. XX)');
     return null;
   }
   
   console.log('✅ Notificación validada - es un pago entrante real');
   
-  // Intentar parsers específicos primero
-  if (normalizedText.includes('yape')) {
-    const result = parseYape(normalizedText);
+  // Intentar parsers específicos primero (usar texto original, no normalizado)
+  if (normalizedText.includes('yape') || normalizedText.includes('bs.') || normalizedText.includes('yapeo')) {
+    const result = parseYape(text); // Usar texto original
     if (result) return result;
   }
   
   if (normalizedText.includes('plin')) {
-    const result = parsePlin(normalizedText);
+    const result = parsePlin(text); // Usar texto original
     if (result) return result;
   }
   
   if (normalizedText.includes('bcp') || normalizedText.includes('banco de credito')) {
-    const result = parseBCP(normalizedText);
+    const result = parseBCP(text); // Usar texto original
     if (result) return result;
   }
   
   // Si ninguno funciona, intentar parser genérico
-  return parseGeneric(normalizedText);
+  return parseGeneric(text); // Usar texto original
 }
 
 /**
