@@ -2,6 +2,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/database');
+const { sendPasswordResetEmail } = require('../services/emailService');
 
 /**
  * Generar JWT token
@@ -958,6 +959,220 @@ async function googleSignIn(req, res) {
   }
 }
 
+/**
+ * Solicitar recuperación de contraseña
+ * POST /api/auth/forgot-password
+ */
+async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email requerido',
+        message: 'Debes proporcionar un email'
+      });
+    }
+    
+    // Buscar usuario
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, full_name')
+      .eq('email', email.toLowerCase().trim())
+      .single();
+    
+    // Por seguridad, siempre respondemos éxito incluso si el email no existe
+    // Esto evita que alguien pueda verificar qué emails están registrados
+    if (userError || !user) {
+      console.log(`⚠️ Intento de recuperación para email no registrado: ${email}`);
+      return res.json({
+        success: true,
+        message: 'Si el email existe, recibirás un código de recuperación'
+      });
+    }
+    
+    // Generar código de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Calcular fecha de expiración (15 minutos)
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    
+    // Guardar código en la base de datos
+    const { error: insertError } = await supabase
+      .from('password_reset_codes')
+      .insert({
+        user_id: user.id,
+        email: user.email,
+        code: code,
+        expires_at: expiresAt.toISOString(),
+        used: false
+      });
+    
+    if (insertError) {
+      console.error('❌ Error al guardar código de recuperación:', insertError);
+      return res.status(500).json({
+        error: 'Error del servidor',
+        message: 'No se pudo generar el código de recuperación'
+      });
+    }
+    
+    // Enviar email
+    try {
+      await sendPasswordResetEmail(user.email, code, user.full_name);
+      console.log(`✓ Código de recuperación enviado a: ${user.email}`);
+    } catch (emailError) {
+      console.error('❌ Error al enviar email:', emailError);
+      return res.status(500).json({
+        error: 'Error al enviar email',
+        message: 'No se pudo enviar el código de recuperación. Intenta nuevamente.'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Si el email existe, recibirás un código de recuperación',
+      expiresIn: 15 // minutos
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en forgotPassword:', error);
+    res.status(500).json({
+      error: 'Error del servidor',
+      message: 'No se pudo procesar la solicitud'
+    });
+  }
+}
+
+/**
+ * Verificar código de recuperación
+ * POST /api/auth/verify-reset-code
+ */
+async function verifyResetCode(req, res) {
+  try {
+    const { email, code } = req.body;
+    
+    if (!email || !code) {
+      return res.status(400).json({
+        error: 'Datos incompletos',
+        message: 'Email y código son requeridos'
+      });
+    }
+    
+    // Buscar código válido
+    const { data: resetCode, error: codeError } = await supabase
+      .from('password_reset_codes')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .eq('code', code)
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (codeError || !resetCode) {
+      return res.status(400).json({
+        error: 'Código inválido',
+        message: 'El código es incorrecto o ha expirado'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Código válido',
+      resetCodeId: resetCode.id
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en verifyResetCode:', error);
+    res.status(500).json({
+      error: 'Error del servidor',
+      message: 'No se pudo verificar el código'
+    });
+  }
+}
+
+/**
+ * Restablecer contraseña con código
+ * POST /api/auth/reset-password
+ */
+async function resetPassword(req, res) {
+  try {
+    const { email, code, newPassword } = req.body;
+    
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({
+        error: 'Datos incompletos',
+        message: 'Email, código y nueva contraseña son requeridos'
+      });
+    }
+    
+    // Validar longitud de contraseña
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        error: 'Contraseña inválida',
+        message: 'La contraseña debe tener al menos 6 caracteres'
+      });
+    }
+    
+    // Buscar código válido
+    const { data: resetCode, error: codeError } = await supabase
+      .from('password_reset_codes')
+      .select('*')
+      .eq('email', email.toLowerCase().trim())
+      .eq('code', code)
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (codeError || !resetCode) {
+      return res.status(400).json({
+        error: 'Código inválido',
+        message: 'El código es incorrecto o ha expirado'
+      });
+    }
+    
+    // Hash de la nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Actualizar contraseña del usuario
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password: hashedPassword })
+      .eq('id', resetCode.user_id);
+    
+    if (updateError) {
+      console.error('❌ Error al actualizar contraseña:', updateError);
+      return res.status(500).json({
+        error: 'Error del servidor',
+        message: 'No se pudo actualizar la contraseña'
+      });
+    }
+    
+    // Marcar código como usado
+    await supabase
+      .from('password_reset_codes')
+      .update({ used: true })
+      .eq('id', resetCode.id);
+    
+    console.log(`✓ Contraseña restablecida para usuario: ${resetCode.user_id}`);
+    
+    res.json({
+      success: true,
+      message: 'Contraseña actualizada correctamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en resetPassword:', error);
+    res.status(500).json({
+      error: 'Error del servidor',
+      message: 'No se pudo restablecer la contraseña'
+    });
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -966,5 +1181,8 @@ module.exports = {
   changePassword,
   registerFCMToken,
   registerWorker,
-  googleSignIn
+  googleSignIn,
+  forgotPassword,
+  verifyResetCode,
+  resetPassword
 };

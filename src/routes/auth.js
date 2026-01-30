@@ -14,6 +14,11 @@ router.post('/register-worker', authController.registerWorker);
 // Google Sign-In
 router.post('/google', loginLimiter, authController.googleSignIn);
 
+// Recuperación de contraseña
+router.post('/forgot-password', loginLimiter, authController.forgotPassword);
+router.post('/verify-reset-code', loginLimiter, authController.verifyResetCode);
+router.post('/reset-password', loginLimiter, authController.resetPassword);
+
 // Rutas protegidas (requieren autenticación)
 router.get('/me', authenticateToken, authController.getProfile);
 router.put('/profile', authenticateToken, authController.updateProfile);
