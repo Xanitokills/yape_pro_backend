@@ -480,7 +480,22 @@ async function updateProfile(req, res) {
     };
     
     if (full_name) updates.full_name = full_name;
-    if (phone !== undefined) updates.phone = phone;
+    if (phone !== undefined) {
+      // Si se cambia el teléfono, marcarlo como no verificado
+      updates.phone = phone;
+      
+      // Obtener el teléfono actual del usuario
+      const { data: currentUser } = await supabase
+        .from('users')
+        .select('phone')
+        .eq('id', userId)
+        .single();
+      
+      // Solo marcar como no verificado si el teléfono cambió
+      if (currentUser && currentUser.phone !== phone) {
+        updates.phone_verified = false;
+      }
+    }
     if (country) updates.country = country;
     
     // Actualizar en la base de datos
@@ -488,7 +503,7 @@ async function updateProfile(req, res) {
       .from('users')
       .update(updates)
       .eq('id', userId)
-      .select('id, email, full_name, phone, role, country, updated_at')
+      .select('id, email, full_name, phone, phone_verified, role, country, updated_at')
       .single();
     
     if (error) {
