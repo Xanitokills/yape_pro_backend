@@ -904,19 +904,9 @@ async function googleSignIn(req, res) {
       });
     }
     
-    // Si es owner, crear tienda por defecto
+    // Si es owner, asignar plan Free por defecto
+    // La tienda se creará manualmente en el onboarding
     if (role === 'owner') {
-      const storeName = name ? `Tienda de ${name.split(' ')[0]}` : 'Mi Tienda';
-      
-      await supabase
-        .from('stores')
-        .insert({
-          owner_id: newUser.id,
-          name: storeName,
-          is_active: true
-        });
-      
-      // Asignar plan Free por defecto
       const { data: freePlan } = await supabase
         .from('subscription_plans')
         .select('id')
