@@ -4,9 +4,19 @@
  */
 
 const axios = require('axios');
-const colors = require('colors');
 
 const BASE_URL = 'http://localhost:3002/api';
+
+// Colores para consola (sin dependencias)
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  cyan: '\x1b[36m',
+  gray: '\x1b[90m'
+};
 
 // Configuración de prueba
 const TEST_CONFIG = {
@@ -36,11 +46,11 @@ let testResults = {
 // Helper para mostrar resultados
 function logTest(name, passed, message, details = null) {
   const icon = passed ? '✅' : '❌';
-  const status = passed ? 'PASS'.green : 'FAIL'.red;
+  const status = passed ? `${colors.green}PASS${colors.reset}` : `${colors.red}FAIL${colors.reset}`;
   console.log(`\n${icon} [${status}] ${name}`);
   console.log(`   ${message}`);
   if (details) {
-    console.log(`   Detalles:`.gray, JSON.stringify(details, null, 2).gray);
+    console.log(`   ${colors.gray}Detalles: ${JSON.stringify(details, null, 2)}${colors.reset}`);
   }
   
   testResults.tests.push({ name, passed, message });
@@ -52,19 +62,19 @@ function logTest(name, passed, message, details = null) {
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function runTests() {
-  console.log('═'.repeat(60).cyan);
-  console.log('🔐 TEST DE SEGURIDAD - SUPER ADMINS'.cyan.bold);
-  console.log('═'.repeat(60).cyan);
-  console.log('Base URL:'.gray, BASE_URL);
-  console.log('Fecha:'.gray, new Date().toLocaleString());
-  console.log('═'.repeat(60).cyan);
+  console.log(`${colors.cyan}${'═'.repeat(60)}${colors.reset}`);
+  console.log(`${colors.cyan}${colors.bright}🔐 TEST DE SEGURIDAD - SUPER ADMINS${colors.reset}`);
+  console.log(`${colors.cyan}${'═'.repeat(60)}${colors.reset}`);
+  console.log(`${colors.gray}Base URL: ${BASE_URL}${colors.reset}`);
+  console.log(`${colors.gray}Fecha: ${new Date().toLocaleString()}${colors.reset}`);
+  console.log(`${colors.cyan}${'═'.repeat(60)}${colors.reset}`);
 
   try {
     // ========================================
     // TEST 1: Intentar auto-asignarse super_admin en registro
     // ========================================
-    console.log('\n\n📋 TEST 1: Intentar auto-asignarse super_admin'.yellow.bold);
-    console.log('─'.repeat(60).gray);
+    console.log(`\n\n${colors.yellow}${colors.bright}📋 TEST 1: Intentar auto-asignarse super_admin${colors.reset}`);
+    console.log(`${colors.gray}${'─'.repeat(60)}${colors.reset}`);
     
     try {
       const response = await axios.post(`${BASE_URL}/auth/register`, {
