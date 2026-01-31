@@ -442,6 +442,38 @@ async function updateProfile(req, res) {
     const { full_name, phone, country } = req.body;
     const userId = req.user.userId;
     
+    // Si se está actualizando el teléfono, validar que no exista en otro usuario
+    if (phone) {
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, country')
+        .eq('phone', phone)
+        .neq('id', userId)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error('Error al verificar teléfono:', checkError);
+      }
+      
+      if (existingUser) {
+        // Si el país es el mismo, el número definitivamente está duplicado
+        if (existingUser.country === (country || req.user.country)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Teléfono en uso',
+            message: 'Este número de teléfono ya está registrado en tu país'
+          });
+        }
+        
+        // Incluso si es de otro país, advertir (puede ser fraude)
+        return res.status(400).json({
+          success: false,
+          error: 'Teléfono en uso',
+          message: 'Este número de teléfono ya está registrado'
+        });
+      }
+    }
+    
     // Preparar campos a actualizar
     const updates = {
       updated_at: new Date().toISOString()
@@ -473,6 +505,7 @@ async function updateProfile(req, res) {
   } catch (error) {
     console.error('Error en updateProfile:', error);
     res.status(500).json({
+      success: false,
       error: 'Error al actualizar perfil',
       message: 'No se pudo actualizar tu información'
     });
@@ -1164,6 +1197,92 @@ async function resetPassword(req, res) {
   }
 }
 
+/**
+ * Verificar número de teléfono (con token de Firebase)
+ * POST /api/auth/verify-phone
+ */
+async function verifyPhone(req, res) {
+  try {
+    const { phone, verification_token } = req.body;
+    const userId = req.user.userId;
+    
+    if (!phone || !verification_token) {
+      return res.status(400).json({
+        success: false,
+        error: 'Datos incompletos',
+        message: 'Se requiere el teléfono y el token de verificación'
+      });
+    }
+    
+    // Verificar el token con Firebase Admin
+    const admin = require('../config/firebase-admin');
+    
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(verification_token);
+      const firebasePhone = decodedToken.phone_number;
+      
+      if (!firebasePhone) {
+        return res.status(400).json({
+          success: false,
+          error: 'Token inválido',
+          message: 'El token no contiene información de teléfono'
+        });
+      }
+      
+      // Verificar que el número coincida
+      const cleanPhone = phone.replace(/\D/g, '');
+      const firebasePhoneClean = firebasePhone.replace(/\D/g, '');
+      
+      if (!firebasePhoneClean.includes(cleanPhone) && !cleanPhone.includes(firebasePhoneClean.slice(-9))) {
+        return res.status(400).json({
+          success: false,
+          error: 'Número no coincide',
+          message: 'El número verificado no corresponde al registrado'
+        });
+      }
+      
+      // Actualizar usuario con teléfono verificado
+      const { data: user, error } = await supabase
+        .from('users')
+        .update({ 
+          phone: phone,
+          phone_verified: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select('id, email, full_name, phone, phone_verified, role, country')
+        .single();
+      
+      if (error) {
+        console.error('Error al actualizar verificación:', error);
+        throw error;
+      }
+      
+      res.json({
+        success: true,
+        message: 'Teléfono verificado exitosamente',
+        data: { user }
+      });
+      
+    } catch (firebaseError) {
+      console.error('Error verificando token:', firebaseError);
+      return res.status(400).json({
+        success: false,
+        error: 'Verificación fallida',
+        message: 'El token es inválido o ha expirado'
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error en verifyPhone:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error del servidor',
+      message: 'No se pudo verificar el teléfono'
+    });
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -1175,5 +1294,6 @@ module.exports = {
   googleSignIn,
   forgotPassword,
   verifyResetCode,
-  resetPassword
+  resetPassword,
+  verifyPhone
 };
