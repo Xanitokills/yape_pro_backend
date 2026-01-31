@@ -439,7 +439,7 @@ async function getProfile(req, res) {
  */
 async function updateProfile(req, res) {
   try {
-    const { full_name, phone } = req.body;
+    const { full_name, phone, country } = req.body;
     const userId = req.user.userId;
     
     // Preparar campos a actualizar
@@ -449,13 +449,14 @@ async function updateProfile(req, res) {
     
     if (full_name) updates.full_name = full_name;
     if (phone !== undefined) updates.phone = phone;
+    if (country) updates.country = country;
     
     // Actualizar en la base de datos
     const { data: user, error } = await supabase
       .from('users')
       .update(updates)
       .eq('id', userId)
-      .select('id, email, full_name, phone, role, updated_at')
+      .select('id, email, full_name, phone, role, country, updated_at')
       .single();
     
     if (error) {
