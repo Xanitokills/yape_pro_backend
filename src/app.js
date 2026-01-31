@@ -91,8 +91,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate Limiting - Protección contra abuso
-app.use('/api/', generalLimiter);
+// Rate Limiting - Protección contra abuso (deshabilitado temporalmente para debugging)
+// app.use('/api/', generalLimiter);
+console.log('⚠️  Rate limiting DESHABILITADO temporalmente');
 console.log('🛡️  Rate limiting activado para /api/*');
 
 // Servir archivos estáticos (interfaz de testing) - ESTRICTAMENTE solo en desarrollo
