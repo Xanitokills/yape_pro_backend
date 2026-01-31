@@ -25,7 +25,11 @@ function generateToken(user) {
  */
 async function register(req, res) {
   try {
-    const { email, password, full_name, phone, role = 'worker', verification_token } = req.body;
+    const { email, password, full_name, phone, verification_token } = req.body;
+    
+    // SEGURIDAD: Forzar que todos los registros públicos sean 'owner'
+    // Los super_admin solo se crean directamente en la base de datos
+    const role = 'owner';
     
     // Validaciones básicas (el middleware de validación ya hace la mayoría)
     if (!email || !password || !full_name) {
@@ -36,7 +40,7 @@ async function register(req, res) {
     }
     
     // Para owners, el teléfono es OBLIGATORIO (evita múltiples cuentas free)
-    if (role === 'owner' && !phone) {
+    if (!phone) {
       return res.status(400).json({
         error: 'Teléfono requerido',
         message: 'El número de teléfono es obligatorio para crear una cuenta'
@@ -1311,6 +1315,93 @@ async function verifyPhone(req, res) {
   }
 }
 
+/**
+ * Crear super administrador (solo con clave secreta)
+ * POST /api/auth/create-super-admin
+ * Body: { email, password, full_name, secret_key }
+ */
+async function createSuperAdmin(req, res) {
+  try {
+    const { email, password, full_name, secret_key } = req.body;
+    
+    // Verificar clave secreta
+    const SUPER_ADMIN_SECRET = process.env.SUPER_ADMIN_SECRET_KEY || 'CHANGE_THIS_SECRET_KEY_IN_PRODUCTION';
+    
+    if (!secret_key || secret_key !== SUPER_ADMIN_SECRET) {
+      return res.status(403).json({
+        error: 'Acceso denegado',
+        message: 'Clave secreta inválida'
+      });
+    }
+    
+    // Validaciones básicas
+    if (!email || !password || !full_name) {
+      return res.status(400).json({
+        error: 'Datos incompletos',
+        message: 'Email, contraseña y nombre completo son requeridos'
+      });
+    }
+    
+    // Verificar si el email ya existe
+    const { data: existingEmail } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single();
+    
+    if (existingEmail) {
+      return res.status(409).json({
+        error: 'Email ya registrado',
+        message: 'Ya existe una cuenta con este email'
+      });
+    }
+    
+    // Hashear contraseña
+    const password_hash = await bcrypt.hash(password, 10);
+    
+    // Crear super admin
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({
+        email: email.toLowerCase(),
+        password_hash,
+        full_name,
+        role: 'super_admin',
+        phone: null
+      })
+      .select('id, email, full_name, role, created_at')
+      .single();
+    
+    if (error) {
+      console.error('Error al crear super admin:', error);
+      throw error;
+    }
+    
+    console.log(`✅ Super admin creado: ${user.email}`);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Super administrador creado exitosamente',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          created_at: user.created_at
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error en createSuperAdmin:', error);
+    res.status(500).json({
+      error: 'Error al crear super administrador',
+      message: 'Hubo un problema al crear la cuenta'
+    });
+  }
+}
+
 module.exports = {
   register,
   login,
@@ -1323,5 +1414,6 @@ module.exports = {
   forgotPassword,
   verifyResetCode,
   resetPassword,
-  verifyPhone
+  verifyPhone,
+  createSuperAdmin
 };

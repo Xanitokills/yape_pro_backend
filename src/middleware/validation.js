@@ -43,10 +43,7 @@ const authValidation = {
       .optional()
       .matches(/^\+?[\d\s-()]+$/)
       .withMessage('Número de teléfono inválido'),
-    body('role')
-      .optional()
-      .isIn(['super_admin', 'owner', 'worker'])
-      .withMessage('Rol inválido'),
+    // SEGURIDAD: El rol ya no se acepta del cliente, siempre es 'owner'
     handleValidationErrors
   ],
   

@@ -11,6 +11,15 @@ router.post('/register', registerLimiter, authValidation.register, authControlle
 router.post('/login', loginLimiter, authValidation.login, authController.login);
 router.post('/register-worker', authController.registerWorker);
 
+// ⚠️ DEPRECADO: Usar /api/admin/create-super-admin en su lugar
+// Este endpoint solo funciona en desarrollo y requiere secret key
+// En producción, crear super admins desde el panel de admin protegido
+if (process.env.NODE_ENV === 'development' || process.env.ENABLE_PUBLIC_SUPER_ADMIN === 'true') {
+  router.post('/create-super-admin', registerLimiter, authController.createSuperAdmin);
+  console.log('⚠️  ADVERTENCIA: Endpoint público /create-super-admin está HABILITADO');
+  console.log('   Solo usar en desarrollo. Usa /api/admin/create-super-admin en producción');
+}
+
 // Google Sign-In
 router.post('/google', loginLimiter, authController.googleSignIn);
 

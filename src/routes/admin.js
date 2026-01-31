@@ -80,4 +80,19 @@ router.delete('/plans/:planId', adminController.deactivatePlan);
  */
 router.delete('/users/:userId', adminController.deleteOwner);
 
+/**
+ * @route   POST /api/admin/create-super-admin
+ * @desc    Crear un nuevo super administrador
+ * @body    { email, password, full_name }
+ * @access  Super Admin (requiere estar autenticado como super_admin)
+ */
+router.post('/create-super-admin', adminController.createSuperAdmin);
+
+/**
+ * @route   GET /api/admin/super-admins
+ * @desc    Listar todos los super administradores
+ * @access  Super Admin
+ */
+router.get('/super-admins', adminController.listSuperAdmins);
+
 module.exports = router;

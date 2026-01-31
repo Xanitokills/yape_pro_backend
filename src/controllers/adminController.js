@@ -720,6 +720,129 @@ const deleteOwner = async (req, res) => {
   }
 };
 
+/**
+ * Crear nuevo super administrador (solo super_admin puede hacerlo)
+ * POST /api/admin/create-super-admin
+ * Body: { email, password, full_name }
+ */
+const createSuperAdmin = async (req, res) => {
+  try {
+    const { email, password, full_name } = req.body;
+    const bcrypt = require('bcrypt');
+    
+    // Validaciones básicas
+    if (!email || !password || !full_name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Datos incompletos',
+        message: 'Email, contraseña y nombre completo son requeridos'
+      });
+    }
+    
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'Contraseña débil',
+        message: 'La contraseña debe tener al menos 8 caracteres'
+      });
+    }
+    
+    // Verificar si el email ya existe
+    const { data: existingEmail } = await supabase
+      .from('users')
+      .select('id, email, role')
+      .eq('email', email.toLowerCase())
+      .single();
+    
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        error: 'Email ya registrado',
+        message: 'Ya existe una cuenta con este email'
+      });
+    }
+    
+    // Hashear contraseña
+    const password_hash = await bcrypt.hash(password, 10);
+    
+    // Crear super admin
+    const { data: user, error } = await supabase
+      .from('users')
+      .insert({
+        email: email.toLowerCase(),
+        password_hash,
+        full_name,
+        role: 'super_admin',
+        phone: null
+      })
+      .select('id, email, full_name, role, created_at')
+      .single();
+    
+    if (error) {
+      console.error('Error al crear super admin:', error);
+      throw error;
+    }
+    
+    // Log de auditoría
+    console.log(`✅ Super admin creado por: ${req.user.email}`);
+    console.log(`   Nuevo super admin: ${user.email}`);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Super administrador creado exitosamente',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          role: user.role,
+          created_at: user.created_at
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en createSuperAdmin:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al crear super administrador',
+      message: 'Hubo un problema al crear la cuenta'
+    });
+  }
+};
+
+/**
+ * Listar todos los super administradores
+ * GET /api/admin/super-admins
+ */
+const listSuperAdmins = async (req, res) => {
+  try {
+    const { data: superAdmins, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, created_at, last_login')
+      .eq('role', 'super_admin')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    res.json({
+      success: true,
+      data: {
+        superAdmins,
+        total: superAdmins.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en listSuperAdmins:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al listar super administradores',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   changeUserPlan,
@@ -729,5 +852,7 @@ module.exports = {
   deactivatePlan,
   getUserSubscriptionHistory,
   resetUserLimits,
-  deleteOwner
+  deleteOwner,
+  createSuperAdmin,
+  listSuperAdmins
 };
