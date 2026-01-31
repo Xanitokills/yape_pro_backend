@@ -3,18 +3,22 @@ const rateLimit = require('express-rate-limit');
 
 /**
  * Rate Limiter General - Para toda la API
- * 100 requests por 15 minutos
+ * 500 requests por minuto (aumentado para SPA con muchas peticiones)
  */
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100,
+  windowMs: 60 * 1000, // 1 minuto
+  max: 500,
   message: {
     success: false,
-    error: 'Demasiadas peticiones desde esta IP. Intenta de nuevo en 15 minutos.',
+    error: 'Demasiadas peticiones desde esta IP. Intenta de nuevo en 1 minuto.',
     code: 'RATE_LIMIT_EXCEEDED'
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: (req) => {
+    // No aplicar rate limit a health checks
+    return req.path === '/health';
+  }
 });
 
 /**
