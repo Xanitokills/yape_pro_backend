@@ -1230,7 +1230,15 @@ async function verifyPhone(req, res) {
     }
     
     // Verificar el token con Firebase Admin
-    const admin = require('../config/firebase-admin');
+    const { admin } = require('../config/firebase');
+    
+    if (!admin) {
+      return res.status(500).json({
+        success: false,
+        error: 'Servicio no disponible',
+        message: 'El servicio de verificación no está configurado'
+      });
+    }
     
     try {
       const decodedToken = await admin.auth().verifyIdToken(verification_token);
