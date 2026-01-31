@@ -1233,16 +1233,21 @@ async function verifyPhone(req, res) {
     const { admin } = require('../config/firebase');
     
     if (!admin) {
+      console.error('❌ Firebase Admin no inicializado - verifica las variables de entorno');
       return res.status(500).json({
         success: false,
         error: 'Servicio no disponible',
-        message: 'El servicio de verificación no está configurado'
+        message: 'El servicio de verificación no está configurado. Contacta al administrador.'
       });
     }
+    
+    console.log(`🔐 Verificando token para usuario: ${userId}`);
     
     try {
       const decodedToken = await admin.auth().verifyIdToken(verification_token);
       const firebasePhone = decodedToken.phone_number;
+      
+      console.log(`✓ Token verificado. Teléfono de Firebase: ${firebasePhone}`);
       
       if (!firebasePhone) {
         return res.status(400).json({
