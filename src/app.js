@@ -132,9 +132,10 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     name: 'Yape Pro API',
-    version: '1.0.0',
+    version: '1.0.1',
     status: 'online',
-    documentation: 'Contacta al administrador para más información'
+    documentation: 'Contacta al administrador para más información',
+    updated: new Date().toISOString()
   });
 });
 
