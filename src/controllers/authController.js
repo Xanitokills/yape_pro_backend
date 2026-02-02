@@ -1471,12 +1471,14 @@ async function sendEmailVerification(req, res) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     
     // Eliminar códigos previos para este email
+    console.log(`[DEBUG] Eliminando códigos previos para: ${cleanEmail}`);
     await supabase
       .from('email_verification_codes')
       .delete()
       .eq('email', cleanEmail);
     
     // Guardar nuevo código
+    console.log(`[DEBUG] Insertando nuevo código para: ${cleanEmail}`);
     const { error: insertError } = await supabase
       .from('email_verification_codes')
       .insert({
@@ -1493,6 +1495,7 @@ async function sendEmailVerification(req, res) {
         message: 'No se pudo generar el código de verificación'
       });
     }
+    console.log(`[DEBUG] Código guardado en DB. Llamando a servicio de email...`);
     
     // Enviar email
     try {
