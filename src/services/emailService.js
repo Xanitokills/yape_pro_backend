@@ -8,10 +8,41 @@ function createTransporter() {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD
     },
-    connectionTimeout: 10000, // 10 segundos
-    greetingTimeout: 5000,
-    socketTimeout: 20000
+    connectionTimeout: 30000, // 30 segundos - Gmail puede ser lento
+    greetingTimeout: 15000,   // 15 segundos
+    socketTimeout: 45000,     // 45 segundos
+    pool: false,              // No usar pool de conexiones
+    maxConnections: 1         // Una conexión a la vez
   });
+}
+
+// Función helper para enviar email con retry
+async function sendEmailWithRetry(mailOptions, maxRetries = 2) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const transporter = createTransporter();
+    
+    try {
+      console.log(`Intento ${attempt} de ${maxRetries} para enviar email a: ${mailOptions.to}`);
+      const result = await transporter.sendMail(mailOptions);
+      transporter.close();
+      console.log(`Email enviado exitosamente a: ${mailOptions.to}`);
+      return result;
+    } catch (error) {
+      transporter.close();
+      lastError = error;
+      console.error(`Intento ${attempt} fallo:`, error.message);
+      
+      if (attempt < maxRetries) {
+        const waitTime = attempt * 2000; // 2s, 4s
+        console.log(`Esperando ${waitTime}ms antes de reintentar...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+  
+  throw lastError;
 }
 
 /**
@@ -22,7 +53,6 @@ function createTransporter() {
  * @returns {Promise<void>}
  */
 async function sendPasswordResetEmail(email, code, userName = '') {
-  const transporter = createTransporter(); // Crear transporter fresco
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
@@ -111,13 +141,11 @@ async function sendPasswordResetEmail(email, code, userName = '') {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`Email de recuperación enviado a: ${email}`);
-    transporter.close(); // Cerrar conexión
+    await sendEmailWithRetry(mailOptions);
+    console.log(`Email de recuperacion enviado a: ${email}`);
   } catch (error) {
-    transporter.close();
-    console.error('Error al enviar email:', error);
-    throw new Error('No se pudo enviar el email de recuperación');
+    console.error('Error al enviar email de recuperacion:', error);
+    throw new Error('No se pudo enviar el email de recuperacion');
   }
 }
 
@@ -128,7 +156,6 @@ async function sendPasswordResetEmail(email, code, userName = '') {
  * @returns {Promise<void>}
  */
 async function sendEmailVerificationCode(email, code) {
-  const transporter = createTransporter(); // Crear transporter fresco
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
@@ -215,11 +242,9 @@ async function sendEmailVerificationCode(email, code) {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendEmailWithRetry(mailOptions);
     console.log(`Email de verificacion enviado a: ${email}`);
-    transporter.close(); // Cerrar conexión
   } catch (error) {
-    transporter.close();
     console.error('Error al enviar email de verificacion:', error);
     throw new Error('No se pudo enviar el email de verificacion');
   }
