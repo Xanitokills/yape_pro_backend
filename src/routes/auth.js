@@ -28,6 +28,10 @@ router.post('/forgot-password', loginLimiter, authController.forgotPassword);
 router.post('/verify-reset-code', loginLimiter, authController.verifyResetCode);
 router.post('/reset-password', loginLimiter, authController.resetPassword);
 
+// Verificación de email para registro
+router.post('/send-email-verification', registerLimiter, authController.sendEmailVerification);
+router.post('/verify-email-code', loginLimiter, authController.verifyEmailCode);
+
 // Rutas protegidas (requieren autenticación)
 router.get('/me', authenticateToken, authController.getProfile);
 router.put('/profile', authenticateToken, authController.updateProfile);

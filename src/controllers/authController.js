@@ -2,7 +2,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { supabase } = require('../config/database');
-const { sendPasswordResetEmail } = require('../services/emailService');
+const { sendPasswordResetEmail, sendEmailVerificationCode } = require('../services/emailService');
 
 /**
  * Generar JWT token
@@ -1427,5 +1427,158 @@ module.exports = {
   verifyResetCode,
   resetPassword,
   verifyPhone,
-  createSuperAdmin
+  createSuperAdmin,
+  sendEmailVerification,
+  verifyEmailCode
 };
+
+/**
+ * Enviar código de verificación de email
+ * POST /api/auth/send-email-verification
+ */
+async function sendEmailVerification(req, res) {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email requerido',
+        message: 'Debes proporcionar un email'
+      });
+    }
+    
+    const cleanEmail = email.toLowerCase().trim();
+    
+    // Verificar si el email ya está registrado
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', cleanEmail)
+      .single();
+    
+    if (existingUser) {
+      return res.status(400).json({
+        error: 'Email registrado',
+        message: 'Este email ya está registrado. Intenta iniciar sesión.'
+      });
+    }
+    
+    // Generar código de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Calcular fecha de expiración (10 minutos)
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    
+    // Eliminar códigos previos para este email
+    await supabase
+      .from('email_verification_codes')
+      .delete()
+      .eq('email', cleanEmail);
+    
+    // Guardar nuevo código
+    const { error: insertError } = await supabase
+      .from('email_verification_codes')
+      .insert({
+        email: cleanEmail,
+        code: code,
+        expires_at: expiresAt.toISOString(),
+        verified: false
+      });
+    
+    if (insertError) {
+      console.error('❌ Error al guardar código de verificación:', insertError);
+      return res.status(500).json({
+        error: 'Error del servidor',
+        message: 'No se pudo generar el código de verificación'
+      });
+    }
+    
+    // Enviar email
+    try {
+      await sendEmailVerificationCode(cleanEmail, code);
+      console.log(`✓ Código de verificación enviado a: ${cleanEmail}`);
+    } catch (emailError) {
+      console.error('❌ Error al enviar email:', emailError);
+      return res.status(500).json({
+        error: 'Error al enviar email',
+        message: 'No se pudo enviar el código de verificación. Verifica que el email sea correcto.'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Código de verificación enviado',
+      expiresIn: 10 // minutos
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en sendEmailVerification:', error);
+    res.status(500).json({
+      error: 'Error del servidor',
+      message: 'No se pudo procesar la solicitud'
+    });
+  }
+}
+
+/**
+ * Verificar código de email
+ * POST /api/auth/verify-email-code
+ */
+async function verifyEmailCode(req, res) {
+  try {
+    const { email, code } = req.body;
+    
+    if (!email || !code) {
+      return res.status(400).json({
+        error: 'Datos incompletos',
+        message: 'Email y código son requeridos'
+      });
+    }
+    
+    const cleanEmail = email.toLowerCase().trim();
+    
+    // Buscar código válido
+    const { data: verification, error: verifyError } = await supabase
+      .from('email_verification_codes')
+      .select('*')
+      .eq('email', cleanEmail)
+      .eq('code', code)
+      .eq('verified', false)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    
+    if (verifyError || !verification) {
+      return res.status(400).json({
+        error: 'Código inválido',
+        message: 'El código es incorrecto o ha expirado'
+      });
+    }
+    
+    // Marcar como verificado
+    await supabase
+      .from('email_verification_codes')
+      .update({ verified: true })
+      .eq('id', verification.id);
+    
+    // Generar token de verificación (válido por 30 minutos para completar registro)
+    const verificationToken = jwt.sign(
+      { email: cleanEmail, type: 'email_verification' },
+      process.env.JWT_SECRET,
+      { expiresIn: '30m' }
+    );
+    
+    res.json({
+      success: true,
+      verified: true,
+      message: 'Email verificado correctamente',
+      token: verificationToken
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en verifyEmailCode:', error);
+    res.status(500).json({
+      error: 'Error del servidor',
+      message: 'No se pudo verificar el código'
+    });
+  }
+}
