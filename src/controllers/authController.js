@@ -377,7 +377,7 @@ async function getProfile(req, res) {
   try {
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, email, full_name, phone, role, is_active, created_at, last_login')
+      .select('id, email, full_name, phone, phone_verified, role, is_active, created_at, last_login')
       .eq('id', req.user.userId)
       .single();
     
