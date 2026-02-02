@@ -1,12 +1,21 @@
 const nodemailer = require('nodemailer');
 
-// Configurar el transporter de email
+// Configurar el transporter de email con configuración explícita para Railway
+// Railway puede tener problemas con el servicio 'gmail' por defecto
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // true para 465, false para otros puertos
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD // Usa una contraseña de aplicación de Gmail
-  }
+  },
+  tls: {
+    rejectUnauthorized: false // Necesario en algunos entornos cloud
+  },
+  connectionTimeout: 10000, // 10 segundos
+  greetingTimeout: 10000,
+  socketTimeout: 15000
 });
 
 /**
