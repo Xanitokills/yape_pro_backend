@@ -1451,13 +1451,17 @@ async function sendEmailVerification(req, res) {
     const cleanEmail = email.toLowerCase().trim();
     
     // Verificar si el email ya está registrado
-    const { data: existingUser } = await supabase
+    console.log(`[DEBUG] Verificando si ${cleanEmail} ya existe...`);
+    const { data: existingUser, error: userCheckError } = await supabase
       .from('users')
       .select('id')
       .eq('email', cleanEmail)
-      .single();
+      .maybeSingle(); // Cambiado de .single() a .maybeSingle() para no lanzar error
+    
+    console.log(`[DEBUG] Resultado de búsqueda: existingUser=${!!existingUser}, error=${!!userCheckError}`);
     
     if (existingUser) {
+      console.log(`[DEBUG] Email ${cleanEmail} ya está registrado`);
       return res.status(400).json({
         error: 'Email registrado',
         message: 'Este email ya está registrado. Intenta iniciar sesión.'
