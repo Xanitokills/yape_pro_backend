@@ -888,7 +888,7 @@ async function googleSignIn(req, res) {
     // Buscar si el usuario ya existe por email
     const { data: existingUser } = await supabase
       .from('users')
-      .select('id, email, full_name, phone, role, country, is_active, created_at')
+      .select('id, email, full_name, phone, phone_verified, role, country, is_active, created_at')
       .eq('email', email.toLowerCase())
       .single();
     
@@ -899,6 +899,17 @@ async function googleSignIn(req, res) {
           error: 'Cuenta desactivada',
           message: 'Tu cuenta ha sido desactivada. Contacta al soporte.'
         });
+      }
+      
+      // Verificar si tiene tienda (para owners)
+      let hasStore = false;
+      if (existingUser.role === 'owner') {
+        const { data: store } = await supabase
+          .from('stores')
+          .select('id')
+          .eq('owner_id', existingUser.id)
+          .single();
+        hasStore = !!store;
       }
       
       // Actualizar última conexión y foto si cambió
@@ -922,7 +933,8 @@ async function googleSignIn(req, res) {
         data: {
           user: {
             ...existingUser,
-            photo_url: picture
+            photo_url: picture,
+            has_store: hasStore
           },
           token
         }
