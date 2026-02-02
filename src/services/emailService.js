@@ -1,13 +1,18 @@
 const nodemailer = require('nodemailer');
 
-// Configurar el transporter de email - configuración simple que funciona
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
-  }
-});
+// Crear transporter dinámicamente para cada envío (evita problemas de timeout)
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    },
+    connectionTimeout: 10000, // 10 segundos
+    greetingTimeout: 5000,
+    socketTimeout: 20000
+  });
+}
 
 /**
  * Envía un código de verificación por email para recuperación de contraseña
@@ -17,6 +22,7 @@ const transporter = nodemailer.createTransport({
  * @returns {Promise<void>}
  */
 async function sendPasswordResetEmail(email, code, userName = '') {
+  const transporter = createTransporter(); // Crear transporter fresco
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
@@ -107,7 +113,9 @@ async function sendPasswordResetEmail(email, code, userName = '') {
   try {
     await transporter.sendMail(mailOptions);
     console.log(`Email de recuperación enviado a: ${email}`);
+    transporter.close(); // Cerrar conexión
   } catch (error) {
+    transporter.close();
     console.error('Error al enviar email:', error);
     throw new Error('No se pudo enviar el email de recuperación');
   }
@@ -135,6 +143,7 @@ async function verifyEmailConfig() {
  * @returns {Promise<void>}
  */
 async function sendEmailVerificationCode(email, code) {
+  const transporter = createTransporter(); // Crear transporter fresco
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
@@ -223,7 +232,9 @@ async function sendEmailVerificationCode(email, code) {
   try {
     await transporter.sendMail(mailOptions);
     console.log(`✓ Email de verificación enviado a: ${email}`);
+    transporter.close(); // Cerrar conexión
   } catch (error) {
+    transporter.close();
     console.error('Error al enviar email de verificación:', error);
     throw new Error('No se pudo enviar el email de verificación');
   }
