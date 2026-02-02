@@ -1,36 +1,25 @@
 const nodemailer = require('nodemailer');
 
-// Crear transporter dinámicamente para cada envío (evita problemas de timeout)
-function createTransporter() {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD
-    },
-    connectionTimeout: 30000, // 30 segundos - Gmail puede ser lento
-    greetingTimeout: 15000,   // 15 segundos
-    socketTimeout: 45000,     // 45 segundos
-    pool: false,              // No usar pool de conexiones
-    maxConnections: 1         // Una conexión a la vez
-  });
-}
+// Configuración de transporter - SIMPLE como el que funcionaba antes
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
+});
 
 // Función helper para enviar email con retry
 async function sendEmailWithRetry(mailOptions, maxRetries = 2) {
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const transporter = createTransporter();
-    
     try {
       console.log(`Intento ${attempt} de ${maxRetries} para enviar email a: ${mailOptions.to}`);
       const result = await transporter.sendMail(mailOptions);
-      transporter.close();
       console.log(`Email enviado exitosamente a: ${mailOptions.to}`);
       return result;
     } catch (error) {
-      transporter.close();
       lastError = error;
       console.error(`Intento ${attempt} fallo:`, error.message);
       
