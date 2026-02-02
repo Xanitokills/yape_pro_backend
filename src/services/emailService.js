@@ -1,12 +1,14 @@
 const nodemailer = require('nodemailer');
 
-// Configuración de transporter - SIMPLE como el que funcionaba antes
+// Configuración de transporter con debug
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
-  }
+  },
+  debug: true, // show debug output
+  logger: true // log information in console
 });
 
 // Función helper para enviar email con retry
@@ -145,101 +147,23 @@ async function sendPasswordResetEmail(email, code, userName = '') {
  * @returns {Promise<void>}
  */
 async function sendEmailVerificationCode(email, code) {
-  console.log(`🚀 [DEBUG] Iniciando proceso de envío de verificación para: ${email}`);
-  console.log(`🔑 [DEBUG] Código generado: ${code}`);
-
+  console.log(`🚀 [DEBUG] Iniciando verificación para: ${email}`);
+  
+  // PRIMERO INTENTAMOS TEXTO PLANO PARA DESCARTAR PROBLEMAS DE HTML
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Código de verificación - Pago Seguro',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-          }
-          .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f9f9f9;
-          }
-          .header {
-            background-color: #635bff;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            border-radius: 5px 5px 0 0;
-          }
-          .content {
-            background-color: white;
-            padding: 30px;
-            border-radius: 0 0 5px 5px;
-          }
-          .code {
-            font-size: 32px;
-            font-weight: bold;
-            color: #635bff;
-            text-align: center;
-            padding: 20px;
-            background-color: #f6f9fc;
-            border-radius: 5px;
-            letter-spacing: 5px;
-            margin: 20px 0;
-          }
-          .warning {
-            color: #666;
-            font-size: 14px;
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 20px;
-            color: #999;
-            font-size: 12px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Pago Seguro</h1>
-          </div>
-          <div class="content">
-            <h2>Verificación de Email</h2>
-            <p>Hola,</p>
-            <p>Gracias por registrarte en Pago Seguro.</p>
-            <p>Tu código de verificación es:</p>
-            <div class="code">${code}</div>
-            <p>Este código es válido por <strong>10 minutos</strong>.</p>
-            <div class="warning">
-              <strong>⚠️ Importante:</strong> Nunca compartas este código con nadie. El equipo de Pago Seguro nunca te pedirá este código.
-            </div>
-          </div>
-          <div class="footer">
-            <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
-            <p>&copy; ${new Date().getFullYear()} Pago Seguro. Todos los derechos reservados.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `
+    subject: 'Tu código de verificación Yape Smart',
+    text: `Tu código es: ${code}\n\nEste código expira en 10 minutos.`,
+    // html: ... comentado temporalmente
   };
 
   try {
-    console.log(`📨 [DEBUG] Llamando a sendEmailWithRetry...`);
+    console.log(`📨 [DEBUG] Enviando email simple...`);
     await sendEmailWithRetry(mailOptions);
-    console.log(`✅ [DEBUG] Email de verificacion enviado EXITOSAMENTE a: ${email}`);
+    console.log(`✅ [DEBUG] Email enviado a: ${email}`);
   } catch (error) {
-    console.error(`❌ [DEBUG] Error FATAL al enviar email de verificacion:`, error);
+    console.error(`❌ [DEBUG] Fallo envío:`, error);
     throw new Error('No se pudo enviar el email de verificacion');
   }
 }
