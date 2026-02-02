@@ -1,25 +1,11 @@
 const nodemailer = require('nodemailer');
 
-// Configurar el transporter de email con timeout más corto
+// Configurar el transporter de email - configuración simple que funciona
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
-  },
-  pool: true, // Usar pool de conexiones
-  maxConnections: 1,
-  maxMessages: 3,
-  rateDelta: 1000,
-  rateLimit: 3
-});
-
-// Verificar conexión al iniciar
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Error configurando email:', error.message);
-  } else {
-    console.log('✅ Servidor de email listo');
   }
 });
 
