@@ -137,12 +137,6 @@ async function verifyEmailConfig() {
   }
 }
 
-module.exports = {
-  sendPasswordResetEmail,
-  sendEmailVerificationCode,
-  verifyEmailConfig
-};
-
 /**
  * Envía un código de verificación por email para registro
  * @param {string} email - Email del usuario
@@ -243,3 +237,10 @@ async function sendEmailVerificationCode(email, code) {
     throw new Error('No se pudo enviar el email de verificación');
   }
 }
+
+// Exportar todas las funciones al final del archivo
+module.exports = {
+  sendPasswordResetEmail,
+  sendEmailVerificationCode,
+  verifyEmailConfig
+};
