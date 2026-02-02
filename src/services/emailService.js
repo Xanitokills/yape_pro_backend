@@ -122,21 +122,6 @@ async function sendPasswordResetEmail(email, code, userName = '') {
 }
 
 /**
- * Verifica la configuración del servicio de email
- * @returns {Promise<boolean>}
- */
-async function verifyEmailConfig() {
-  try {
-    await transporter.verify();
-    console.log('✓ Servicio de email configurado correctamente');
-    return true;
-  } catch (error) {
-    console.error('✗ Error en la configuración del email:', error);
-    return false;
-  }
-}
-
-/**
  * Envía un código de verificación por email para registro
  * @param {string} email - Email del usuario
  * @param {string} code - Código de 6 dígitos
@@ -147,7 +132,7 @@ async function sendEmailVerificationCode(email, code) {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Código de verificación - Pago Seguro',
+    subject: 'Codigo de verificacion - Pago Seguro',
     html: `
       <!DOCTYPE html>
       <html>
@@ -193,8 +178,8 @@ async function sendEmailVerificationCode(email, code) {
             font-size: 14px;
             margin-top: 20px;
             padding: 15px;
-            background-color: #d4edda;
-            border-left: 4px solid #28a745;
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
           }
           .footer {
             text-align: center;
@@ -207,20 +192,20 @@ async function sendEmailVerificationCode(email, code) {
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎉 Bienvenido a Pago Seguro</h1>
+            <h1>Pago Seguro</h1>
           </div>
           <div class="content">
             <h2>Verifica tu Email</h2>
-            <p>¡Hola!</p>
-            <p>Gracias por registrarte en Pago Seguro. Para completar tu registro, ingresa el siguiente código:</p>
+            <p>Gracias por registrarte en Pago Seguro.</p>
+            <p>Tu codigo de verificacion es:</p>
             <div class="code">${code}</div>
-            <p>Este código es válido por <strong>10 minutos</strong>.</p>
+            <p>Este codigo es valido por <strong>10 minutos</strong>.</p>
             <div class="warning">
-              <strong>✅ Seguridad:</strong> Nunca compartas este código con nadie. El equipo de Pago Seguro nunca te pedirá este código por teléfono o WhatsApp.
+              <strong>Importante:</strong> Nunca compartas este codigo con nadie. El equipo de Pago Seguro nunca te pedira este codigo.
             </div>
           </div>
           <div class="footer">
-            <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+            <p>Este es un correo automatico, por favor no respondas a este mensaje.</p>
             <p>&copy; ${new Date().getFullYear()} Pago Seguro. Todos los derechos reservados.</p>
           </div>
         </div>
@@ -231,18 +216,17 @@ async function sendEmailVerificationCode(email, code) {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`✓ Email de verificación enviado a: ${email}`);
+    console.log(`Email de verificacion enviado a: ${email}`);
     transporter.close(); // Cerrar conexión
   } catch (error) {
     transporter.close();
-    console.error('Error al enviar email de verificación:', error);
-    throw new Error('No se pudo enviar el email de verificación');
+    console.error('Error al enviar email de verificacion:', error);
+    throw new Error('No se pudo enviar el email de verificacion');
   }
 }
 
 // Exportar todas las funciones al final del archivo
 module.exports = {
   sendPasswordResetEmail,
-  sendEmailVerificationCode,
-  verifyEmailConfig
+  sendEmailVerificationCode
 };
