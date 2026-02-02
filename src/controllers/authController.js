@@ -39,15 +39,10 @@ async function register(req, res) {
       });
     }
     
-    // Para owners, el teléfono es OBLIGATORIO (evita múltiples cuentas free)
-    if (!phone) {
-      return res.status(400).json({
-        error: 'Teléfono requerido',
-        message: 'El número de teléfono es obligatorio para crear una cuenta'
-      });
-    }
+    // Teléfono es OPCIONAL - el usuario puede verificarlo después en Configuración
+    // Esto es similar al flujo de Google Sign-In para reducir fricción en el registro
     
-    // Limpiar teléfono
+    // Limpiar teléfono si fue proporcionado
     const cleanPhone = phone ? phone.replace(/\D/g, '') : null;
     
     // Detectar país desde el código de teléfono
@@ -86,16 +81,9 @@ async function register(req, res) {
       }
     }
     
-    // Para owners, verificar que el teléfono esté verificado con Firebase
-    if (role === 'owner' && cleanPhone) {
-      // Verificar token de Firebase
-      if (!verification_token) {
-        return res.status(400).json({
-          error: 'Verificación requerida',
-          message: 'Debes verificar tu número de teléfono antes de registrarte'
-        });
-      }
-      
+    // Si se proporciona teléfono Y token de verificación, validar con Firebase
+    // El teléfono es opcional, pero si se proporciona con token debe ser verificado
+    if (cleanPhone && verification_token) {
       try {
         // Verificar el token de Firebase
         const admin = require('firebase-admin');
