@@ -145,6 +145,9 @@ async function sendPasswordResetEmail(email, code, userName = '') {
  * @returns {Promise<void>}
  */
 async function sendEmailVerificationCode(email, code) {
+  console.log(`🚀 [DEBUG] Iniciando proceso de envío de verificación para: ${email}`);
+  console.log(`🔑 [DEBUG] Código generado: ${code}`);
+
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
@@ -232,10 +235,11 @@ async function sendEmailVerificationCode(email, code) {
   };
 
   try {
+    console.log(`📨 [DEBUG] Llamando a sendEmailWithRetry...`);
     await sendEmailWithRetry(mailOptions);
-    console.log(`Email de verificacion enviado a: ${email}`);
+    console.log(`✅ [DEBUG] Email de verificacion enviado EXITOSAMENTE a: ${email}`);
   } catch (error) {
-    console.error('Error al enviar email de verificacion:', error);
+    console.error(`❌ [DEBUG] Error FATAL al enviar email de verificacion:`, error);
     throw new Error('No se pudo enviar el email de verificacion');
   }
 }
