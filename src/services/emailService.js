@@ -16,12 +16,23 @@ async function sendEmailWithRetry(mailOptions, maxRetries = 2) {
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Crear un transporter FRESCO para cada intento
+    const freshTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    });
+    
     try {
       console.log(`Intento ${attempt} de ${maxRetries} para enviar email a: ${mailOptions.to}`);
-      const result = await transporter.sendMail(mailOptions);
+      const result = await freshTransporter.sendMail(mailOptions);
+      freshTransporter.close(); // Cerrar inmediatamente después de enviar
       console.log(`Email enviado exitosamente a: ${mailOptions.to}`);
       return result;
     } catch (error) {
+      freshTransporter.close();
       lastError = error;
       console.error(`Intento ${attempt} fallo:`, error.message);
       
