@@ -159,7 +159,7 @@ async function sendEmailVerificationCode(email, code) {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Codigo de verificacion - Pago Seguro',
+    subject: 'Código de verificación - Pago Seguro',
     html: `
       <!DOCTYPE html>
       <html>
@@ -222,17 +222,18 @@ async function sendEmailVerificationCode(email, code) {
             <h1>Pago Seguro</h1>
           </div>
           <div class="content">
-            <h2>Verifica tu Email</h2>
+            <h2>Verificación de Email</h2>
+            <p>Hola,</p>
             <p>Gracias por registrarte en Pago Seguro.</p>
-            <p>Tu codigo de verificacion es:</p>
+            <p>Tu código de verificación es:</p>
             <div class="code">${code}</div>
-            <p>Este codigo es valido por <strong>10 minutos</strong>.</p>
+            <p>Este código es válido por <strong>10 minutos</strong>.</p>
             <div class="warning">
-              <strong>Importante:</strong> Nunca compartas este codigo con nadie. El equipo de Pago Seguro nunca te pedira este codigo.
+              <strong>⚠️ Importante:</strong> Nunca compartas este código con nadie. El equipo de Pago Seguro nunca te pedirá este código.
             </div>
           </div>
           <div class="footer">
-            <p>Este es un correo automatico, por favor no respondas a este mensaje.</p>
+            <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
             <p>&copy; ${new Date().getFullYear()} Pago Seguro. Todos los derechos reservados.</p>
           </div>
         </div>
