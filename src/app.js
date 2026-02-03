@@ -58,6 +58,11 @@ app.use(cors({
     // Permitir requests sin origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
+    // Permitir dominios de Vercel (previews y producción)
+    if (origin.includes('.vercel.app') || origin.includes('pagoseguro.dev')) {
+      return callback(null, true);
+    }
+    
     if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
