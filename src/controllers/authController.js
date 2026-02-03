@@ -95,37 +95,34 @@ async function register(req, res) {
       });
     }
 
-    // Verificar el código de email en la base de datos
-    const { data: emailVerification, error: emailVerifError } = await supabase
-      .from('email_verification_codes')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .eq('verification_token', email_verification_token)
-      .eq('used', false)
-      .single();
-
-    if (emailVerifError || !emailVerification) {
-      console.log('❌ Token de email inválido o ya usado');
+    // Verificar el JWT de verificación de email
+    try {
+      const decoded = jwt.verify(email_verification_token, process.env.JWT_SECRET);
+      
+      // Verificar que el tipo sea correcto
+      if (decoded.type !== 'email_verification') {
+        return res.status(400).json({
+          error: 'Token inválido',
+          message: 'El token de verificación no es válido'
+        });
+      }
+      
+      // Verificar que el email del token coincida con el email del registro
+      if (decoded.email.toLowerCase() !== email.toLowerCase()) {
+        return res.status(400).json({
+          error: 'Email no coincide',
+          message: 'El email verificado no coincide con el email de registro'
+        });
+      }
+      
+      console.log('✅ Email verificado correctamente con JWT');
+    } catch (jwtError) {
+      console.log('❌ Error verificando JWT de email:', jwtError.message);
       return res.status(400).json({
-        error: 'Verificación de email inválida',
-        message: 'El token de verificación de email es inválido o ya fue usado'
+        error: 'Token de email inválido',
+        message: 'El token de verificación ha expirado o es inválido'
       });
     }
-
-    // Verificar que el código no haya expirado (10 minutos)
-    const verificationCreated = new Date(emailVerification.created_at);
-    const now = new Date();
-    const diffMinutes = (now - verificationCreated) / 1000 / 60;
-
-    if (diffMinutes > 10) {
-      console.log('❌ Token de email expirado');
-      return res.status(400).json({
-        error: 'Verificación expirada',
-        message: 'El código de verificación ha expirado. Solicita uno nuevo.'
-      });
-    }
-
-    console.log('✅ Email verificado correctamente');
 
     // Para registro tradicional, verificar que el teléfono esté verificado con Firebase
     if (role === 'owner' && cleanPhone) {
@@ -248,13 +245,6 @@ async function register(req, res) {
       console.error('Error al crear usuario:', error);
       throw error;
     }
-    
-    // Marcar el email_verification_token como usado después de crear el usuario exitosamente
-    await supabase
-      .from('email_verification_codes')
-      .update({ used: true, used_at: new Date().toISOString() })
-      .eq('email', email.toLowerCase())
-      .eq('verification_token', email_verification_token);
     
     // Generar token JWT
     const token = generateToken(user);
