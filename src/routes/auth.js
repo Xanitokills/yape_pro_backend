@@ -34,6 +34,7 @@ router.post('/verify-email-code', loginLimiter, authController.verifyEmailCode);
 
 // Rutas protegidas (requieren autenticación)
 router.get('/me', authenticateToken, authController.getProfile);
+router.get('/profile', authenticateToken, authController.getProfile); // Alias de /me
 router.put('/profile', authenticateToken, authController.updateProfile);
 router.put('/change-password', authenticateToken, authController.changePassword);
 router.post('/fcm-token', authenticateToken, authController.registerFCMToken);
