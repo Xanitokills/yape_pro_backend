@@ -9,7 +9,7 @@ const { supabase } = require('../../config/database');
 let patternsCache = {
   data: [],
   lastUpdated: 0,
-  ttl: 5 * 60 * 1000 // 5 minutos de TTL
+  ttl: 30 * 60 * 1000 // 30 minutos de TTL (optimizado para reducir queries)
 };
 
 /**
@@ -158,8 +158,36 @@ function refreshCache() {
   console.log('🔄 Caché de patrones invalidada');
 }
 
+/**
+ * Pre-cargar patrones al iniciar el servidor (elimina delay en primera notificación)
+ */
+async function preloadPatterns() {
+  console.log('🚀 Pre-cargando patrones de notificación...');
+  try {
+    const { data, error } = await supabase
+      .from('notification_patterns')
+      .select('*')
+      .eq('is_active', true)
+      .order('priority', { ascending: true });
+      
+    if (error) {
+      console.error('❌ Error pre-cargando patrones:', error.message);
+      return false;
+    }
+    
+    patternsCache.data = data || [];
+    patternsCache.lastUpdated = Date.now();
+    console.log(`✅ Pre-carga exitosa: ${patternsCache.data.length} patrones en memoria`);
+    return true;
+  } catch (e) {
+    console.error('❌ Excepción pre-cargando patrones:', e.message);
+    return false;
+  }
+}
+
 module.exports = {
   parse,
   refreshCache,
-  getActivePatterns
+  getActivePatterns,
+  preloadPatterns
 };
