@@ -159,15 +159,26 @@ function parse(text, country = 'PE') {
       result = boliviaParser.parse(text);
       break;
       
-    // Países sin parser específico aún - usar genérico
-    case 'AR':
-    case 'BR':
-    case 'CL':
-    case 'CO':
-    case 'MX':
-    case 'ES':
+    // Países sin parser específico - usar genérico mejorado
+    case 'US':  // Estados Unidos
+    case 'AR':  // Argentina
+    case 'BR':  // Brasil
+    case 'CL':  // Chile
+    case 'CO':  // Colombia
+    case 'MX':  // México
+    case 'ES':  // España
+    case 'CR':  // Costa Rica
+    case 'EC':  // Ecuador
+    case 'GT':  // Guatemala
+    case 'HN':  // Honduras
+    case 'NI':  // Nicaragua
+    case 'PA':  // Panamá
+    case 'PY':  // Paraguay
+    case 'DO':  // República Dominicana
+    case 'UY':  // Uruguay
+    case 'VE':  // Venezuela
     default:
-      console.log(`ℹ️ Parser específico para ${country} no implementado, usando genérico`);
+      console.log(`ℹ️ Usando parser genérico para ${country}`);
       result = parseGeneric(text, countryConfig.currencySymbol);
       if (result) {
         result.currency = countryConfig.currency;
@@ -210,19 +221,33 @@ function parseGeneric(text, currencySymbol = null) {
   
   const amount = parseFloat(match[1]);
   
-  // Intentar extraer nombre del remitente
+  // Intentar extraer nombre del remitente con patrones multiidioma
   const namePatterns = [
-    /de\s+([a-záéíóúñ\s]+?)(?:\s+via|\s+con|\s+desde|\.|$)/i,
-    /([A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+?)\s+te\s+(?:envió|envio|transfirió|transfirio|pago|pagó)/i,
-    /recibiste.*?de\s+([^\n]+)/i,
+    // Español: "de NOMBRE" 
+    /(?:de|from)\s+([a-záéíóúñ\s]+?)(?:\s+(?:via|con|desde|te|envió)|[.,]|$)/i,
+    // "NOMBRE te envió" o "NOMBRE sent you"
+    /([A-ZÁÉÍÓÚÑ][a-záéíóúñ\s]+?)\s+(?:te\s+)?(?:envió|envio|sent|transferred|paid)/i,
+    // "recibiste de NOMBRE" o "received from NOMBRE"
+    /(?:recibiste|received).*?(?:de|from)\s+([^\n.,]+)/i,
+    // Inglés: "NOMBRE paid you"
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+paid\s+you/i,
+    // "You received from NOMBRE"
+    /you\s+received.*?from\s+([^\n.,]+)/i,
+    // Formato genérico: buscar nombres en mayúsculas (2+ palabras)
+    /([A-ZÁÉÍÓÚÑ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ]{2,})+)/
   ];
   
   let sender = 'Desconocido';
   for (const pattern of namePatterns) {
     const nameMatch = text.match(pattern);
-    if (nameMatch) {
+    if (nameMatch && nameMatch[1]) {
       sender = nameMatch[1].trim();
-      break;
+      // Limpiar múltiples espacios
+      sender = sender.replace(/\s+/g, ' ').trim();
+      // Validar que el nombre tenga sentido (más de 2 caracteres)
+      if (sender.length > 2) {
+        break;
+      }
     }
   }
   

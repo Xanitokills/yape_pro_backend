@@ -261,7 +261,7 @@ const COUNTRIES = {
     phoneDigits: 10,
     timezone: 'America/New_York',
     paymentApps: ['zelle', 'venmo', 'cash_app', 'apple_pay', 'paypal'],
-    hasParser: false,
+    hasParser: true,  // Usa parser genérico mejorado
     parserVersion: '1.0'
   }
 };

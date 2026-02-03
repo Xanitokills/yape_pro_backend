@@ -53,6 +53,7 @@ async function register(req, res) {
     
     // Detectar país desde el código de teléfono
     const countryMap = {
+      '1809': 'DO',  // República Dominicana (debe ir ANTES de '1')
       '51': 'PE',    // Perú
       '54': 'AR',    // Argentina
       '591': 'BO',   // Bolivia
@@ -70,10 +71,9 @@ async function register(req, res) {
       '505': 'NI',   // Nicaragua
       '507': 'PA',   // Panamá
       '595': 'PY',   // Paraguay
-      '1809': 'DO',  // República Dominicana
       '598': 'UY',   // Uruguay
       '58': 'VE',    // Venezuela
-      '1': 'US'      // Estados Unidos
+      '1': 'US'      // Estados Unidos (debe ir al FINAL)
     };
     
     let detectedCountry = null;
@@ -297,7 +297,7 @@ async function login(req, res) {
     if (email) {
       const { data, error } = await supabase
         .from('users')
-        .select('id, email, password_hash, full_name, phone, role, is_active')
+        .select('id, email, password_hash, full_name, phone, phone_verified, role, is_active, country')
         .eq('email', email.toLowerCase())
         .maybeSingle();
       
@@ -310,7 +310,7 @@ async function login(req, res) {
       // Intento 1: Buscar exacto
       let { data, error } = await supabase
         .from('users')
-        .select('id, email, password_hash, full_name, phone, role, is_active, country')
+        .select('id, email, password_hash, full_name, phone, phone_verified, role, is_active, country')
         .eq('phone', searchPhone)
         .maybeSingle();
       
@@ -318,7 +318,7 @@ async function login(req, res) {
       if (!data && !searchPhone.startsWith('+')) {
         const { data: data2 } = await supabase
           .from('users')
-          .select('id, email, password_hash, full_name, phone, role, is_active, country')
+          .select('id, email, password_hash, full_name, phone, phone_verified, role, is_active, country')
           .eq('phone', `+${searchPhone}`)
           .maybeSingle();
         
@@ -392,6 +392,7 @@ async function login(req, res) {
           email: user.email,
           full_name: user.full_name,
           phone: user.phone,
+          phone_verified: user.phone_verified || false,
           role: user.role,
           country: user.country || 'PE' // Incluir país (default Perú)
         },
