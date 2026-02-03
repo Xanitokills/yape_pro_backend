@@ -25,7 +25,7 @@ function generateToken(user) {
  */
 async function register(req, res) {
   try {
-    const { email, password, full_name, phone, verification_token } = req.body;
+    const { email, password, full_name, phone, verification_token, email_verification_token } = req.body;
     
     // SEGURIDAD: Forzar que todos los registros públicos sean 'owner'
     // Los super_admin solo se crean directamente en la base de datos
@@ -87,6 +87,46 @@ async function register(req, res) {
       }
     }
     
+    // Validar email_verification_token (OBLIGATORIO para registro tradicional)
+    if (!email_verification_token) {
+      return res.status(400).json({
+        error: 'Verificación de email requerida',
+        message: 'Debes verificar tu email antes de registrarte'
+      });
+    }
+
+    // Verificar el código de email en la base de datos
+    const { data: emailVerification, error: emailVerifError } = await supabase
+      .from('email_verification_codes')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .eq('verification_token', email_verification_token)
+      .eq('used', false)
+      .single();
+
+    if (emailVerifError || !emailVerification) {
+      console.log('❌ Token de email inválido o ya usado');
+      return res.status(400).json({
+        error: 'Verificación de email inválida',
+        message: 'El token de verificación de email es inválido o ya fue usado'
+      });
+    }
+
+    // Verificar que el código no haya expirado (10 minutos)
+    const verificationCreated = new Date(emailVerification.created_at);
+    const now = new Date();
+    const diffMinutes = (now - verificationCreated) / 1000 / 60;
+
+    if (diffMinutes > 10) {
+      console.log('❌ Token de email expirado');
+      return res.status(400).json({
+        error: 'Verificación expirada',
+        message: 'El código de verificación ha expirado. Solicita uno nuevo.'
+      });
+    }
+
+    console.log('✅ Email verificado correctamente');
+
     // Para registro tradicional, verificar que el teléfono esté verificado con Firebase
     if (role === 'owner' && cleanPhone) {
       // Verificar token de Firebase
@@ -189,7 +229,7 @@ async function register(req, res) {
     
     // Hashear contraseña
     const password_hash = await bcrypt.hash(password, 10);
-    
+
     // Crear usuario en la base de datos
     const { data: user, error } = await supabase
       .from('users')
@@ -208,6 +248,13 @@ async function register(req, res) {
       console.error('Error al crear usuario:', error);
       throw error;
     }
+    
+    // Marcar el email_verification_token como usado después de crear el usuario exitosamente
+    await supabase
+      .from('email_verification_codes')
+      .update({ used: true, used_at: new Date().toISOString() })
+      .eq('email', email.toLowerCase())
+      .eq('verification_token', email_verification_token);
     
     // Generar token JWT
     const token = generateToken(user);
