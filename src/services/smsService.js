@@ -120,29 +120,75 @@ async function sendVerificationSMS(phone, code) {
 }
 
 /**
- * Valida el formato del número de teléfono peruano
- * @param {string} phone - Número a validar
+ * Configuración de países soportados
+ */
+const COUNTRY_CONFIG = {
+  'PE': { code: '51', length: 9, startsWith: ['9'] },           // Perú
+  'CO': { code: '57', length: 10, startsWith: ['3'] },          // Colombia
+  'MX': { code: '52', length: 10, startsWith: ['1', '2', '3', '4', '5', '6', '7', '8', '9'] }, // México
+  'AR': { code: '54', length: 10, startsWith: ['1', '2', '3', '9'] }, // Argentina
+  'CL': { code: '56', length: 9, startsWith: ['9'] },           // Chile
+  'EC': { code: '593', length: 9, startsWith: ['9'] },          // Ecuador
+  'BO': { code: '591', length: 8, startsWith: ['6', '7'] },     // Bolivia
+  'VE': { code: '58', length: 10, startsWith: ['4'] },          // Venezuela
+  'US': { code: '1', length: 10, startsWith: ['2', '3', '4', '5', '6', '7', '8', '9'] }, // USA
+  'ES': { code: '34', length: 9, startsWith: ['6', '7'] },      // España
+};
+
+/**
+ * Valida el formato del número de teléfono (multi-país)
+ * @param {string} phone - Número a validar (puede incluir código de país)
  * @returns {boolean}
  */
-function isValidPeruvianPhone(phone) {
+function isValidPhone(phone) {
   const cleaned = phone.replace(/\D/g, '');
   
-  // Número peruano: 9 dígitos empezando con 9
-  if (cleaned.length === 9 && cleaned.startsWith('9')) {
-    return true;
+  // Intentar detectar país por código
+  for (const [country, config] of Object.entries(COUNTRY_CONFIG)) {
+    const { code, length, startsWith } = config;
+    
+    // Con código de país completo
+    if (cleaned.startsWith(code)) {
+      const localNumber = cleaned.slice(code.length);
+      if (localNumber.length === length) {
+        // Verificar si empieza con dígito válido para ese país
+        if (startsWith.some(prefix => localNumber.startsWith(prefix))) {
+          return true;
+        }
+      }
+    }
+    
+    // Sin código de país (número local)
+    if (cleaned.length === length) {
+      if (startsWith.some(prefix => cleaned.startsWith(prefix))) {
+        return true;
+      }
+    }
   }
   
-  // Con código de país: 519XXXXXXXX
-  if (cleaned.length === 11 && cleaned.startsWith('519')) {
+  // Fallback: aceptar números entre 8 y 15 dígitos (estándar internacional)
+  if (cleaned.length >= 8 && cleaned.length <= 15) {
     return true;
   }
   
   return false;
 }
 
+/**
+ * Valida el formato del número de teléfono peruano (legacy - mantener compatibilidad)
+ * @param {string} phone - Número a validar
+ * @returns {boolean}
+ */
+function isValidPeruvianPhone(phone) {
+  // Usar la nueva función multi-país
+  return isValidPhone(phone);
+}
+
 module.exports = {
   generateOTP,
   sendVerificationSMS,
   formatPhoneNumber,
-  isValidPeruvianPhone
+  isValidPeruvianPhone,
+  isValidPhone,
+  COUNTRY_CONFIG
 };
