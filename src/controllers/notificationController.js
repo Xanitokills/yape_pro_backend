@@ -333,7 +333,7 @@ async function parseNotification(req, res) {
     }
     
     // Parsear el texto con el país del usuario
-    const parsed = notificationParser.parse(text, userCountry);
+    const parsed = await notificationParser.parse(text, userCountry);
     
     if (!parsed) {
       return res.status(400).json({
