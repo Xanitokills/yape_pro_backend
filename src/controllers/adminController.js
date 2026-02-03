@@ -843,6 +843,434 @@ const listSuperAdmins = async (req, res) => {
   }
 };
 
+/**
+ * ========================================
+ * GESTIÓN DE PATRONES DE NOTIFICACIÓN
+ * ========================================
+ */
+
+/**
+ * Obtener todos los patrones de notificación
+ * GET /api/admin/notification-patterns
+ */
+const getNotificationPatterns = async (req, res) => {
+  try {
+    const { country, wallet_type, is_active } = req.query;
+    
+    console.log('📋 getNotificationPatterns llamado con:', { country, wallet_type, is_active });
+    
+    let query = supabase
+      .from('notification_patterns')
+      .select('*');
+    
+    // Aplicar filtros
+    if (country) query = query.eq('country', country);
+    if (wallet_type) query = query.eq('wallet_type', wallet_type);
+    if (is_active !== undefined) query = query.eq('is_active', is_active === 'true');
+    
+    // Ordenar por prioridad y fecha
+    query = query.order('priority', { ascending: true })
+                 .order('created_at', { ascending: false });
+    
+    const { data: patterns, error } = await query;
+    
+    if (error) throw error;
+    
+    console.log('✅ Patrones encontrados:', patterns?.length || 0);
+    
+    res.json({
+      success: true,
+      data: {
+        patterns,
+        total: patterns.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en getNotificationPatterns:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener patrones de notificación',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Obtener un patrón específico por ID
+ * GET /api/admin/notification-patterns/:id
+ */
+const getNotificationPattern = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { data: pattern, error } = await supabase
+      .from('notification_patterns')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) throw error;
+    
+    if (!pattern) {
+      return res.status(404).json({
+        success: false,
+        error: 'Patrón no encontrado'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: { pattern }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en getNotificationPattern:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener patrón',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Crear nuevo patrón de notificación
+ * POST /api/admin/notification-patterns
+ */
+const createNotificationPattern = async (req, res) => {
+  try {
+    const {
+      country,
+      wallet_type,
+      pattern,
+      amount_group,
+      sender_group,
+      name,
+      description,
+      example,
+      priority,
+      currency,
+      regex_flags,
+      is_active
+    } = req.body;
+    
+    // Validaciones
+    if (!country || !wallet_type || !pattern || !name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campos requeridos: country, wallet_type, pattern, name'
+      });
+    }
+    
+    // Validar que la regex sea válida
+    try {
+      new RegExp(pattern, regex_flags || 'i');
+    } catch (regexError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Patrón regex inválido',
+        message: regexError.message
+      });
+    }
+    
+    const userId = req.user.id; // Del middleware de autenticación
+    
+    const { data: newPattern, error } = await supabase
+      .from('notification_patterns')
+      .insert([{
+        country,
+        wallet_type,
+        pattern,
+        amount_group: amount_group || 1,
+        sender_group: sender_group || 2,
+        name,
+        description,
+        example,
+        priority: priority || 100,
+        currency: currency || 'PEN',
+        regex_flags: regex_flags || 'i',
+        is_active: is_active !== undefined ? is_active : true,
+        created_by: userId,
+        updated_by: userId
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    console.log('✅ Patrón creado exitosamente:', newPattern.id);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Patrón creado exitosamente',
+      data: { pattern: newPattern }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en createNotificationPattern:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al crear patrón',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Actualizar patrón de notificación existente
+ * PUT /api/admin/notification-patterns/:id
+ */
+const updateNotificationPattern = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      country,
+      wallet_type,
+      pattern,
+      amount_group,
+      sender_group,
+      name,
+      description,
+      example,
+      priority,
+      currency,
+      regex_flags,
+      is_active
+    } = req.body;
+    
+    // Validar que el patrón existe
+    const { data: existingPattern, error: checkError } = await supabase
+      .from('notification_patterns')
+      .select('id')
+      .eq('id', id)
+      .single();
+    
+    if (checkError || !existingPattern) {
+      return res.status(404).json({
+        success: false,
+        error: 'Patrón no encontrado'
+      });
+    }
+    
+    // Validar regex si se está actualizando
+    if (pattern) {
+      try {
+        new RegExp(pattern, regex_flags || 'i');
+      } catch (regexError) {
+        return res.status(400).json({
+          success: false,
+          error: 'Patrón regex inválido',
+          message: regexError.message
+        });
+      }
+    }
+    
+    const userId = req.user.id;
+    
+    // Construir objeto de actualización solo con campos proporcionados
+    const updateData = { updated_by: userId };
+    if (country !== undefined) updateData.country = country;
+    if (wallet_type !== undefined) updateData.wallet_type = wallet_type;
+    if (pattern !== undefined) updateData.pattern = pattern;
+    if (amount_group !== undefined) updateData.amount_group = amount_group;
+    if (sender_group !== undefined) updateData.sender_group = sender_group;
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (example !== undefined) updateData.example = example;
+    if (priority !== undefined) updateData.priority = priority;
+    if (currency !== undefined) updateData.currency = currency;
+    if (regex_flags !== undefined) updateData.regex_flags = regex_flags;
+    if (is_active !== undefined) updateData.is_active = is_active;
+    
+    const { data: updatedPattern, error } = await supabase
+      .from('notification_patterns')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    console.log('✅ Patrón actualizado:', id);
+    
+    res.json({
+      success: true,
+      message: 'Patrón actualizado exitosamente',
+      data: { pattern: updatedPattern }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en updateNotificationPattern:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al actualizar patrón',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Eliminar patrón de notificación
+ * DELETE /api/admin/notification-patterns/:id
+ */
+const deleteNotificationPattern = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar que existe
+    const { data: existingPattern, error: checkError } = await supabase
+      .from('notification_patterns')
+      .select('id, name')
+      .eq('id', id)
+      .single();
+    
+    if (checkError || !existingPattern) {
+      return res.status(404).json({
+        success: false,
+        error: 'Patrón no encontrado'
+      });
+    }
+    
+    const { error } = await supabase
+      .from('notification_patterns')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    console.log('✅ Patrón eliminado:', id, existingPattern.name);
+    
+    res.json({
+      success: true,
+      message: 'Patrón eliminado exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en deleteNotificationPattern:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al eliminar patrón',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Probar un patrón contra un texto de ejemplo
+ * POST /api/admin/notification-patterns/test
+ */
+const testNotificationPattern = async (req, res) => {
+  try {
+    const { pattern, regex_flags, amount_group, sender_group, test_text } = req.body;
+    
+    if (!pattern || !test_text) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requieren campos: pattern, test_text'
+      });
+    }
+    
+    try {
+      const regex = new RegExp(pattern, regex_flags || 'i');
+      const match = test_text.match(regex);
+      
+      if (match) {
+        const amountIdx = amount_group || 1;
+        const senderIdx = sender_group || 2;
+        
+        res.json({
+          success: true,
+          data: {
+            matched: true,
+            amount: match[amountIdx] || null,
+            sender: match[senderIdx] || null,
+            full_match: match[0],
+            groups: match.slice(1)
+          }
+        });
+      } else {
+        res.json({
+          success: true,
+          data: {
+            matched: false,
+            message: 'El patrón no coincide con el texto de prueba'
+          }
+        });
+      }
+    } catch (regexError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Patrón regex inválido',
+        message: regexError.message
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en testNotificationPattern:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al probar patrón',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Obtener estadísticas de uso de patrones
+ * GET /api/admin/notification-patterns/stats
+ */
+const getNotificationPatternStats = async (req, res) => {
+  try {
+    // Obtener resumen de patrones por país y tipo
+    const { data: patterns, error: patternsError } = await supabase
+      .from('notification_patterns')
+      .select('country, wallet_type, is_active');
+    
+    if (patternsError) throw patternsError;
+    
+    // Obtener estadísticas de uso (últimos 30 días)
+    const { data: logs, error: logsError } = await supabase
+      .from('notification_parsing_logs')
+      .select('pattern_id, success')
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+    
+    // Agrupar estadísticas
+    const stats = {
+      total_patterns: patterns.length,
+      active_patterns: patterns.filter(p => p.is_active).length,
+      inactive_patterns: patterns.filter(p => !p.is_active).length,
+      by_country: {},
+      by_wallet: {},
+      usage_last_30_days: logs ? logs.length : 0,
+      success_rate: logs ? (logs.filter(l => l.success).length / logs.length * 100).toFixed(2) : 0
+    };
+    
+    // Agrupar por país
+    patterns.forEach(p => {
+      stats.by_country[p.country] = (stats.by_country[p.country] || 0) + 1;
+    });
+    
+    // Agrupar por billetera
+    patterns.forEach(p => {
+      stats.by_wallet[p.wallet_type] = (stats.by_wallet[p.wallet_type] || 0) + 1;
+    });
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en getNotificationPatternStats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener estadísticas',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   changeUserPlan,
@@ -854,5 +1282,13 @@ module.exports = {
   resetUserLimits,
   deleteOwner,
   createSuperAdmin,
-  listSuperAdmins
+  listSuperAdmins,
+  // Patrones de notificación
+  getNotificationPatterns,
+  getNotificationPattern,
+  createNotificationPattern,
+  updateNotificationPattern,
+  deleteNotificationPattern,
+  testNotificationPattern,
+  getNotificationPatternStats
 };

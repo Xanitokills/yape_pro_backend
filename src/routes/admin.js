@@ -51,6 +51,68 @@ router.post('/users/:userId/reset-limits', adminController.resetUserLimits);
  */
 router.get('/stats', adminController.getSubscriptionStats);
 
+// ========================================
+// ROUTAS PARA GESTIÓN DE PATRONES DE NOTIFICACIÓN
+// ========================================
+
+/**
+ * @route   GET /api/admin/notification-patterns
+ * @desc    Obtener todos los patrones de notificación
+ * @query   country, wallet_type, is_active
+ * @access  Super Admin
+ */
+router.get('/notification-patterns', adminController.getNotificationPatterns);
+
+/**
+ * @route   GET /api/admin/notification-patterns/stats
+ * @desc    Obtener estadísticas de patrones
+ * @access  Super Admin
+ */
+router.get('/notification-patterns/stats', adminController.getNotificationPatternStats);
+
+/**
+ * @route   GET /api/admin/notification-patterns/:id
+ * @desc    Obtener un patrón específico
+ * @access  Super Admin
+ */
+router.get('/notification-patterns/:id', adminController.getNotificationPattern);
+
+/**
+ * @route   POST /api/admin/notification-patterns
+ * @desc    Crear nuevo patrón
+ * @body    { country, wallet_type, pattern, ... }
+ * @access  Super Admin
+ */
+router.post('/notification-patterns', adminController.createNotificationPattern);
+
+/**
+ * @route   POST /api/admin/notification-patterns/test
+ * @desc    Probar un patrón regex
+ * @body    { pattern, test_text, ... }
+ * @access  Super Admin
+ */
+router.post('/notification-patterns/test', adminController.testNotificationPattern);
+
+/**
+ * @route   PUT /api/admin/notification-patterns/:id
+ * @desc    Actualizar patrón existente
+ * @access  Super Admin
+ */
+router.put('/notification-patterns/:id', adminController.updateNotificationPattern);
+
+/**
+ * @route   DELETE /api/admin/notification-patterns/:id
+ * @desc    Eliminar patrón
+ * @access  Super Admin
+ */
+router.delete('/notification-patterns/:id', adminController.deleteNotificationPattern);
+
+// ========================================
+// FIN RUTAS PATRONES
+// ========================================
+ */
+router.get('/stats', adminController.getSubscriptionStats);
+
 /**
  * @route   POST /api/admin/plans
  * @desc    Crear un nuevo plan
