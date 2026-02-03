@@ -71,6 +71,13 @@ router.get('/notification-patterns', adminController.getNotificationPatterns);
 router.get('/notification-patterns/stats', adminController.getNotificationPatternStats);
 
 /**
+ * @route   GET /api/admin/spam-filters
+ * @desc    Obtener filtros anti-spam del sistema
+ * @access  Super Admin
+ */
+router.get('/spam-filters', adminController.getSpamFilters);
+
+/**
  * @route   GET /api/admin/notification-patterns/:id
  * @desc    Obtener un patrón específico
  * @access  Super Admin

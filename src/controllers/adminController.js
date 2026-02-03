@@ -1271,6 +1271,72 @@ const getNotificationPatternStats = async (req, res) => {
   }
 };
 
+/**
+ * Obtener filtros anti-spam del sistema
+ */
+const getSpamFilters = async (req, res) => {
+  try {
+    // Definir los filtros (mismos del notificationParser.js)
+    const filters = {
+      outgoing_payments: [
+        { pattern: 'enviaste\\s+(?:s\\/|bs\\.)', description: 'Detecta "enviaste S/ o Bs."' },
+        { pattern: 'le\\s+(yapeaste|yapeast)\\s+(?:s\\/|bs\\.)', description: 'Detecta "le yapeaste/yapeast"' },
+        { pattern: 'pagaste\\s+(?:s\\/|bs\\.)', description: 'Detecta "pagaste S/ o Bs."' },
+        { pattern: 'le\\s+(plineaste|plineast)\\s+(?:s\\/|bs\\.)', description: 'Detecta "le plineaste/plineast"' },
+        { pattern: 'transferiste\\s+(?:s\\/|bs\\.)', description: 'Detecta "transferiste"' },
+        { pattern: 'enviaste\\s+un\\s+pago', description: 'Detecta "enviaste un pago"' },
+        { pattern: 'hiciste\\s+un\\s+pago', description: 'Detecta "hiciste un pago"' },
+        { pattern: 'realizaste\\s+un\\s+pago', description: 'Detecta "realizaste un pago"' }
+      ],
+      spam_promotions: [
+        { pattern: 'aprovecha', description: 'Marketing: aprovecha' },
+        { pattern: 'descuento', description: 'Marketing: descuento' },
+        { pattern: 'promoción|promocion', description: 'Marketing: promoción' },
+        { pattern: 'oferta', description: 'Marketing: oferta' },
+        { pattern: 'gana\\s+(hasta|un|dinero|puntos)', description: 'Marketing: gana hasta/dinero/puntos' },
+        { pattern: 'sorteo', description: 'Marketing: sorteo' },
+        { pattern: 'premio', description: 'Marketing: premio' },
+        { pattern: '(?:paga|llevate|compra|adquiere).*?(?:s\\/|bs\\.)\\s*\\d+', description: 'Ofertas de productos' },
+        { pattern: 'tu\\s+saldo', description: 'Informativo: tu saldo' },
+        { pattern: 'tienes\\s+un\\s+crédito', description: 'Informativo: crédito disponible' },
+        { pattern: 'préstamo', description: 'Informativo: préstamo' },
+        { pattern: 'recarga', description: 'Informativo: recarga' },
+        { pattern: 'nueva\\s+versión|nueva\\s+version', description: 'Informativo: nueva versión' },
+        { pattern: 'recordatorio', description: 'Informativo: recordatorio' },
+        { pattern: 'pendiente', description: 'Informativo: pendiente' },
+        { pattern: 'vence', description: 'Informativo: vencimiento' },
+        { pattern: 'protege\\s+tu\\s+cuenta', description: 'Seguridad: protege tu cuenta' },
+        { pattern: 'seguridad', description: 'Seguridad: avisos generales' },
+        { pattern: 'te\\s+invita', description: 'Invitaciones' },
+        { pattern: 'conoce', description: 'Informativo: conoce nuevas funciones' },
+        { pattern: 'descubre', description: 'Informativo: descubre' },
+        { pattern: 'nuevo.*en\\s+yape', description: 'Informativo: novedades en Yape' },
+        { pattern: 'activa', description: 'Instrucciones: activar funciones' },
+        { pattern: 'configura', description: 'Instrucciones: configurar' },
+        { pattern: 'completa\\s+tu\\s+perfil', description: 'Instrucciones: completar perfil' },
+        { pattern: 'verifica\\s+tu', description: 'Instrucciones: verificación' },
+        { pattern: 'confirma\\s+tu', description: 'Instrucciones: confirmación' }
+      ]
+    };
+
+    res.json({
+      success: true,
+      data: {
+        filters,
+        note: 'Estos filtros se aplican ANTES de probar los patrones dinámicos. Son parte del sistema y no son editables.'
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en getSpamFilters:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener filtros',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   changeUserPlan,
@@ -1290,5 +1356,6 @@ module.exports = {
   updateNotificationPattern,
   deleteNotificationPattern,
   testNotificationPattern,
-  getNotificationPatternStats
+  getNotificationPatternStats,
+  getSpamFilters
 };
