@@ -1,15 +1,10 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-// Último intento: Puerto 465 SSL/TLS directo
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // SSL/TLS
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
-  }
-});
+// Resend API - Railway bloquea SMTP, usamos HTTP API
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Email del remitente con tu dominio verificado
+const FROM_EMAIL = 'Pago Seguro <noreply@pagoseguro.dev>';
 
 // Función helper para enviar email con retry
 async function sendEmailWithRetry(mailOptions, maxRetries = 2) {
@@ -18,12 +13,19 @@ async function sendEmailWithRetry(mailOptions, maxRetries = 2) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`Intento ${attempt} de ${maxRetries} para enviar email a: ${mailOptions.to}`);
-      const result = await transporter.sendMail(mailOptions);
-      console.log(`Email enviado exitosamente a: ${mailOptions.to}`);
+      
+      const result = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        html: mailOptions.html || mailOptions.text
+      });
+      
+      console.log(`✅ Email enviado exitosamente a: ${mailOptions.to}`);
       return result;
     } catch (error) {
       lastError = error;
-      console.error(`Intento ${attempt} fallo:`, error.message);
+      console.error(`❌ Intento ${attempt} fallo:`, error.message);
       
       if (attempt < maxRetries) {
         const waitTime = attempt * 1000;
