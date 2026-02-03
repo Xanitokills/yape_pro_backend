@@ -215,6 +215,13 @@ async function createNotification(req, res) {
     console.log(`📱 Tokens FCM encontrados: ${tokens.length}`);
     console.log(`👥 Usuarios a notificar: ${userIdsToNotify.length}`);
     
+    // Debug: mostrar qué usuarios tienen token y cuáles no
+    userIdsToNotify.forEach(userId => {
+      const hasToken = fcmTokens?.some(t => t.user_id === userId);
+      const userType = userId === store.owner_id ? 'OWNER' : 'WORKER';
+      console.log(`   ${userType} ${userId}: ${hasToken ? '✅ Tiene token' : '❌ NO tiene token'}`);
+    });
+    
     // Enviar notificaciones push
     let workersNotified = 0;
     if (tokens.length > 0) {
@@ -562,10 +569,110 @@ async function getLatestNotification(req, res) {
   }
 }
 
+/**
+ * Debug: Verificar tokens FCM de una tienda
+ * GET /api/notifications/debug-tokens?store_id=xxx
+ */
+async function debugFCMTokens(req, res) {
+  try {
+    const { store_id } = req.query;
+    const userId = req.user.userId;
+    
+    if (!store_id) {
+      return res.status(400).json({
+        error: 'store_id requerido'
+      });
+    }
+    
+    // Obtener info de la tienda
+    const { data: store } = await supabase
+      .from('stores')
+      .select('owner_id, name')
+      .eq('id', store_id)
+      .single();
+    
+    if (!store) {
+      return res.status(404).json({
+        error: 'Tienda no encontrada'
+      });
+    }
+    
+    // Obtener workers de la tienda
+    const { data: workers } = await supabase
+      .from('workers')
+      .select('user_id, is_active')
+      .eq('store_id', store_id);
+    
+    const workerIds = workers?.filter(w => w.is_active).map(w => w.user_id) || [];
+    const allUserIds = [store.owner_id, ...workerIds];
+    
+    // Obtener tokens FCM
+    const { data: fcmTokens } = await supabase
+      .from('fcm_tokens')
+      .select('user_id, token, device_type, is_active, created_at')
+      .in('user_id', allUserIds);
+    
+    // Construir respuesta detallada
+    const debugInfo = {
+      store: {
+        id: store_id,
+        name: store.name,
+        owner_id: store.owner_id
+      },
+      owner: {
+        user_id: store.owner_id,
+        has_token: fcmTokens?.some(t => t.user_id === store.owner_id && t.is_active) || false,
+        tokens: fcmTokens?.filter(t => t.user_id === store.owner_id).map(t => ({
+          device_type: t.device_type,
+          is_active: t.is_active,
+          created_at: t.created_at,
+          token_preview: t.token.substring(0, 20) + '...'
+        })) || []
+      },
+      workers: workers?.map(w => ({
+        user_id: w.user_id,
+        is_active: w.is_active,
+        has_token: fcmTokens?.some(t => t.user_id === w.user_id && t.is_active) || false,
+        tokens: fcmTokens?.filter(t => t.user_id === w.user_id).map(t => ({
+          device_type: t.device_type,
+          is_active: t.is_active,
+          created_at: t.created_at,
+          token_preview: t.token.substring(0, 20) + '...'
+        })) || []
+      })) || [],
+      summary: {
+        total_workers: workers?.length || 0,
+        active_workers: workerIds.length,
+        owner_has_token: fcmTokens?.some(t => t.user_id === store.owner_id && t.is_active) || false,
+        workers_with_tokens: workerIds.filter(id => 
+          fcmTokens?.some(t => t.user_id === id && t.is_active)
+        ).length,
+        total_users_to_notify: allUserIds.length,
+        total_users_with_tokens: allUserIds.filter(id => 
+          fcmTokens?.some(t => t.user_id === id && t.is_active)
+        ).length
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: debugInfo
+    });
+    
+  } catch (error) {
+    console.error('Error en debugFCMTokens:', error);
+    res.status(500).json({
+      error: 'Error al obtener información de tokens',
+      message: error.message
+    });
+  }
+}
+
 module.exports = {
   getNotifications,
   createNotification,
   parseNotification,
   getNotificationStats,
-  getLatestNotification
+  getLatestNotification,
+  debugFCMTokens
 };

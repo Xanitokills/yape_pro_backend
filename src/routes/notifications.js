@@ -14,6 +14,9 @@ router.get('/', notificationController.getNotifications);
 // Obtener última notificación para ESP32 (query: ?store_id=xxx)
 router.get('/latest', notificationController.getLatestNotification);
 
+// Debug: Verificar tokens FCM de la tienda
+router.get('/debug-tokens', notificationController.debugFCMTokens);
+
 // Obtener estadísticas de notificaciones (query: ?store_id=xxx&days=30)
 router.get('/stats', notificationController.getNotificationStats);
 

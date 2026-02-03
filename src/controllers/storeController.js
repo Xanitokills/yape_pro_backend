@@ -33,15 +33,24 @@ async function getStores(req, res) {
       query = query.eq('owner_id', userId);
     } else if (role === 'worker') {
       // Workers ven tiendas donde trabajan
-      const { data: workerStores } = await supabase
+      console.log(`👷 [getStores] Buscando tiendas para worker: ${userId}`);
+      
+      const { data: workerStores, error: workerError } = await supabase
         .from('workers')
-        .select('store_id')
+        .select('store_id, is_active')
         .eq('user_id', userId)
         .eq('is_active', true);
       
+      console.log(`📊 [getStores] Registros encontrados en workers:`, workerStores);
+      if (workerError) {
+        console.error(`❌ [getStores] Error al buscar en workers:`, workerError);
+      }
+      
       const storeIds = workerStores?.map(w => w.store_id) || [];
+      console.log(`🏪 [getStores] Store IDs para worker: ${storeIds.join(', ')}`);
       
       if (storeIds.length === 0) {
+        console.log(`⚠️ [getStores] Worker ${userId} no tiene tiendas asignadas`);
         return res.json({
           success: true,
           data: { stores: [] }
