@@ -1,16 +1,13 @@
 const nodemailer = require('nodemailer');
 
-// Configuración de Gmail con App Password - intento mejorado para Railway
+// Último intento: Puerto 465 SSL/TLS directo
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // true para 465, false para otros puertos
+  port: 465,
+  secure: true, // SSL/TLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
-  },
-  tls: {
-    rejectUnauthorized: false
   }
 });
 
@@ -29,7 +26,7 @@ async function sendEmailWithRetry(mailOptions, maxRetries = 2) {
       console.error(`Intento ${attempt} fallo:`, error.message);
       
       if (attempt < maxRetries) {
-        const waitTime = attempt * 1000; // 1s, 2s
+        const waitTime = attempt * 1000;
         console.log(`Esperando ${waitTime}ms antes de reintentar...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
       }
