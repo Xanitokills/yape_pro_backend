@@ -235,10 +235,11 @@ async function register(req, res) {
         password_hash,
         full_name,
         phone: cleanPhone,
+        phone_verified: true, // ✅ Teléfono verificado con Firebase durante registro
         role,
         country: detectedCountry
       })
-      .select('id, email, full_name, phone, role, country, created_at')
+      .select('id, email, full_name, phone, phone_verified, role, country, created_at')
       .single();
     
     if (error) {
