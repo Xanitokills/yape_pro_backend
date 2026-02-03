@@ -383,6 +383,12 @@ async function login(req, res) {
     // Generar token JWT
     const token = generateToken(user);
     
+    // Log del estado de verificación del teléfono
+    console.log(`📱 Usuario ${user.email} - Teléfono verificado: ${user.phone_verified ? '✅ SÍ' : '❌ NO'}`);
+    if (user.phone) {
+      console.log(`   Teléfono: ${user.phone}`);
+    }
+    
     res.json({
       success: true,
       message: 'Inicio de sesión exitoso',
@@ -430,6 +436,12 @@ async function getProfile(req, res) {
       return res.status(404).json({
         error: 'Usuario no encontrado'
       });
+    }
+    
+    // Log del estado de verificación del teléfono
+    console.log(`📱 Perfil consultado - ${user.email} - Teléfono verificado: ${user.phone_verified ? '✅ SÍ' : '❌ NO'}`);
+    if (user.phone) {
+      console.log(`   Teléfono: ${user.phone}`);
     }
     
     // Si es owner, obtener información de su tienda
