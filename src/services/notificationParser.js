@@ -25,21 +25,7 @@ const dynamicParser = require('./parsers/dynamicParser');
  * Mantiene compatibilidad con código existente pero usa el sistema dinámico preferentemente
  */
 async function parse(text, country = 'PE') {
-  // 1. Intentar con el parser dinámico (DB)
-  try {
-    const dynamicResult = await dynamicParser.parse(text, country);
-    if (dynamicResult) {
-      console.log('✨ Notificación procesada con Sistema Dinámico');
-      return dynamicResult;
-    }
-  } catch (error) {
-     console.error('⚠️ Falló parser dinámico, usando fallback estático:', error.message);
-  }
-
-  // 2. Fallback a los patrones hardcodeados (Legacy)
-  console.log('⚠️ Usando parsers estáticos (fallback)...');
-  
-  // Normalizar texto
+  // Normalizar texto para filtros
   const normalizedText = text.toLowerCase().trim();
   
   // 🚫 FILTRO 1: RECHAZAR PAGOS SALIENTES (que TÚ enviaste)
@@ -100,12 +86,26 @@ async function parse(text, country = 'PE') {
   // Verificar si es spam/promoción
   for (const pattern of spamPatterns) {
     if (pattern.test(normalizedText)) {
-      console.log('🚫 SPAM/PROMOCIÓN DETECTADO - NO SE PROCESARÁ');
-      console.log('   Esta es una notificación promocional, no un pago real');
+      console.log('🚫 SPAM/PROMOCIÓN DETECTADA - NO SE PROCESARÁ');
+      console.log(`   Patrón detectado: ${pattern.source}`);
       return null;
     }
   }
+  
+  // 1. Intentar con el parser dinámico (DB) - después de validar filtros
+  try {
+    const dynamicResult = await dynamicParser.parse(text, country);
+    if (dynamicResult) {
+      console.log('✨ Notificación procesada con Sistema Dinámico');
+      return dynamicResult;
+    }
+  } catch (error) {
+     console.error('⚠️ Falló parser dinámico, usando fallback estático:', error.message);
+  }
 
+  // 2. Fallback a los patrones hardcodeados (Legacy)
+  console.log('⚠️ Usando parsers estáticos (fallback)...');
+  
   // Intentar parses específicos según contenido
   if (normalizedText.includes('plin')) {
     const plinResult = parsePlin(text);
