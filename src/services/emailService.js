@@ -1,14 +1,13 @@
 const nodemailer = require('nodemailer');
 
-// Configuración de transporter con debug
+// Configuración de transporter (Gmail está bloqueado desde Railway)
+// TODO: Migrar a Resend o SendGrid para producción
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
-  },
-  debug: true, // show debug output
-  logger: true // log information in console
+  }
 });
 
 // Función helper para enviar email con retry
