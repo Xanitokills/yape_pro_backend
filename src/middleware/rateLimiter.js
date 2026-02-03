@@ -41,11 +41,12 @@ const loginLimiter = rateLimit({
 
 /**
  * Rate Limiter para Registro
- * 3 registros por hora por IP
+ * 20 registros por hora por IP (aumentado para testing/desarrollo)
+ * TODO: Reducir a 3-5 en producción
  */
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 3,
+  max: 20,
   message: {
     success: false,
     error: 'Demasiados intentos de registro. Intenta de nuevo en 1 hora.',
