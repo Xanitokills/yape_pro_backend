@@ -108,10 +108,8 @@ router.put('/notification-patterns/:id', adminController.updateNotificationPatte
 router.delete('/notification-patterns/:id', adminController.deleteNotificationPattern);
 
 // ========================================
-// FIN RUTAS PATRONES
+// RUTAS PARA PLANES
 // ========================================
- */
-router.get('/stats', adminController.getSubscriptionStats);
 
 /**
  * @route   POST /api/admin/plans
