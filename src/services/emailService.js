@@ -1,26 +1,27 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-// Configurar Resend (funciona por HTTP API, no SMTP bloqueado)
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configuración de Gmail con App Password - intento mejorado para Railway
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // true para 465, false para otros puertos
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 
-// Email del remitente verificado en Resend
-const FROM_EMAIL = process.env.EMAIL_USER || 'onboarding@resend.dev';
-
-// Función helper para enviar email con retry usando Resend
+// Función helper para enviar email con retry
 async function sendEmailWithRetry(mailOptions, maxRetries = 2) {
   let lastError;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`Intento ${attempt} de ${maxRetries} para enviar email a: ${mailOptions.to}`);
-      
-      const result = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: mailOptions.to,
-        subject: mailOptions.subject,
-        html: mailOptions.html || mailOptions.text
-      });
-      
+      const result = await transporter.sendMail(mailOptions);
       console.log(`Email enviado exitosamente a: ${mailOptions.to}`);
       return result;
     } catch (error) {
