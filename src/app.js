@@ -16,6 +16,7 @@ const subscriptionRoutes = require('./routes/subscriptions');
 const adminRoutes = require('./routes/admin');
 const testRoutes = require('./routes/test');
 const contactRoutes = require('./routes/contact');
+const couponsRoutes = require('./routes/coupons');
 
 // Importar middleware de error
 const errorHandler = require('./middleware/errorHandler');
@@ -154,6 +155,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/coupons', couponsRoutes);
 app.use('/api', contactRoutes);
 
 // 🧪 Rutas de testing (ESTRICTAMENTE solo en desarrollo)
