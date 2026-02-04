@@ -6,13 +6,15 @@ const { preloadPatterns } = require('./src/services/parsers/dynamicParser');
 
 const PORT = process.env.PORT || 3002;
 
-const server = app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📡 Railway assigned port: ${process.env.PORT || 'not set, using fallback'}`);
   
-  // Pre-cargar patrones de notificación (optimización de velocidad)
-  await preloadPatterns();
+  // Pre-cargar patrones de notificación (optimización de velocidad) - no bloqueante
+  preloadPatterns().catch(err => {
+    console.error('⚠️  Error preloading patterns:', err.message);
+  });
   
   // Keep-alive: Ping cada 5 minutos para evitar que Railway duerma el servicio
   if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
