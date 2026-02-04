@@ -512,8 +512,6 @@ const validateCoupon = async (req, res) => {
     if (coupon.used_count >= coupon.max_uses) {
       console.log('❌ Cupón sin usos disponibles');
       return res.status(400).json({
-      console.log('❌ Cupón sin usos disponibles');
-      return res.status(400).json({
         success: false,
         valid: false,
         message: 'Este cupón ha alcanzado su límite de usos'
