@@ -446,56 +446,105 @@ const validateCoupon = async (req, res) => {
   try {
     const { code, storeId, amount } = req.body;
 
-    if (!code || !storeId || !amount) {
+    if (!code) {
       return res.status(400).json({
         success: false,
-        message: 'Faltan campos requeridos: code, storeId, amount'
+        message: 'El código del cupón es requerido'
       });
     }
 
-    // Usar la función SQL para validar
-    const { data, error } = await supabase
-      .rpc('is_coupon_valid', {
-        p_code: code.toUpperCase(),
-        p_store_id: storeId,
-        p_amount: amount
+    // Buscar el cupón
+    const { data: coupon, error: fetchError } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .eq('is_active', true)
+      .single();
+
+    if (fetchError || !coupon) {
+      return res.status(404).json({
+        success: false,
+        valid: false,
+        message: 'Cupón no encontrado o inactivo'
       });
+    }
 
-    if (error) throw error;
+    // Validar fechas
+    const now = new Date();
+    const validFrom = new Date(coupon.valid_from);
+    const validUntil = coupon.valid_until ? new Date(coupon.valid_until) : null;
 
-    const validation = data[0];
-
-    if (!validation.valid) {
+    if (now < validFrom) {
       return res.status(400).json({
         success: false,
         valid: false,
-        message: validation.message
+        message: 'Este cupón aún no es válido'
       });
     }
 
-    // Calcular el descuento
-    let discountAmount = 0;
-    if (validation.discount_type === 'percentage') {
-      discountAmount = (amount * validation.discount_value) / 100;
-    } else {
-      discountAmount = validation.discount_value;
+    if (validUntil && now > validUntil) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        message: 'Este cupón ha expirado'
+      });
     }
 
-    const finalAmount = Math.max(0, amount - discountAmount);
+    // Validar usos
+    if (coupon.used_count >= coupon.max_uses) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        message: 'Este cupón ha alcanzado su límite de usos'
+      });
+    }
 
-    res.json({
+    // Validar tienda específica si aplica
+    if (storeId && coupon.store_id && coupon.store_id !== storeId) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        message: 'Este cupón no es válido para esta tienda'
+      });
+    }
+
+    // Validar compra mínima para cupones de descuento
+    if (coupon.coupon_type === 'discount' && amount && amount < coupon.min_purchase_amount) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        message: `Compra mínima requerida: S/ ${coupon.min_purchase_amount}`
+      });
+    }
+
+    // Calcular descuento si se proporciona amount y es cupón de descuento
+    let response = {
       success: true,
       valid: true,
       message: 'Cupón válido',
       data: {
-        couponId: validation.coupon_id,
-        discountType: validation.discount_type,
-        discountValue: validation.discount_value,
+        coupon: coupon
+      }
+    };
+
+    if (coupon.coupon_type === 'discount' && amount) {
+      let discountAmount = 0;
+      if (coupon.discount_type === 'percentage') {
+        discountAmount = (amount * coupon.discount_value) / 100;
+      } else {
+        discountAmount = coupon.discount_value;
+      }
+
+      const finalAmount = Math.max(0, amount - discountAmount);
+
+      response.data.breakdown = {
         originalAmount: amount,
         discountAmount: discountAmount.toFixed(2),
         finalAmount: finalAmount.toFixed(2)
-      }
-    });
+      };
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('Error validating coupon:', error);
