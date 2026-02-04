@@ -223,9 +223,9 @@ const getCoupons = async (req, res) => {
 
     res.json({
       success: true,
-      data: coupons,
+      data: coupons || [],
       pagination: {
-        total: count,
+        total: count || 0,
         page: parseInt(page),
         limit: parseInt(limit),
         totalPages: Math.ceil(count / limit)
