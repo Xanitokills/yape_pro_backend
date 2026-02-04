@@ -200,6 +200,21 @@ async function generateTestNotification(country, wallet) {
       .eq('wallet_type', wallet)
       .eq('is_active', true);
     
+    // Preparar datos parseados con flag de éxito
+    const parsedData = parsedResult ? {
+      amount: parsedResult.amount,
+      currency: parsedResult.currency || countryConfig?.currency || 'N/A',
+      type: parsedResult.type || parsedResult.source || 'N/A',
+      from: parsedResult.sender || parsedResult.from || 'N/A',
+      matched: true // El parser devolvió resultados
+    } : {
+      amount: null,
+      currency: countryConfig?.currency || 'N/A',
+      type: 'N/A',
+      from: 'N/A',
+      matched: false // El parser no pudo parsear
+    };
+    
     return {
       success: true,
       test: {
@@ -207,7 +222,7 @@ async function generateTestNotification(country, wallet) {
         countryName: countryConfig?.name || country,
         wallet,
         rawNotification: randomNotification,
-        parsedData: parsedResult,
+        parsedData: parsedData,
         hasActivePatterns: patterns && patterns.length > 0,
         patternCount: patterns?.length || 0,
         timestamp: new Date().toISOString()
