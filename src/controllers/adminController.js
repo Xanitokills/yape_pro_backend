@@ -5,6 +5,7 @@
 
 const { supabase } = require('../config/database');
 const subscriptionService = require('../services/subscriptionService');
+const { refreshCache } = require('../services/parsers/dynamicParser');
 
 /**
  * Obtener todos los usuarios con información de suscripción
@@ -999,7 +1000,10 @@ const createNotificationPattern = async (req, res) => {
     
     if (error) throw error;
     
+    // Invalidar caché para que los cambios se reflejen inmediatamente
+    refreshCache();
     console.log('✅ Patrón creado exitosamente:', newPattern.id);
+    console.log('🔄 Caché de patrones invalidada automáticamente');
     
     res.status(201).json({
       success: true,
@@ -1092,7 +1096,10 @@ const updateNotificationPattern = async (req, res) => {
     
     if (error) throw error;
     
+    // Invalidar caché para que los cambios se reflejen inmediatamente
+    refreshCache();
     console.log('✅ Patrón actualizado:', id);
+    console.log('🔄 Caché de patrones invalidada automáticamente');
     
     res.json({
       success: true,
@@ -1139,7 +1146,10 @@ const deleteNotificationPattern = async (req, res) => {
     
     if (error) throw error;
     
+    // Invalidar caché para que los cambios se reflejen inmediatamente
+    refreshCache();
     console.log('✅ Patrón eliminado:', id, existingPattern.name);
+    console.log('🔄 Caché de patrones invalidada automáticamente');
     
     res.json({
       success: true,
@@ -1337,6 +1347,30 @@ const getSpamFilters = async (req, res) => {
   }
 };
 
+/**
+ * Forzar actualización del caché de patrones
+ * POST /api/admin/notification-patterns/refresh-cache
+ */
+const refreshPatternsCache = async (req, res) => {
+  try {
+    refreshCache();
+    console.log('🔄 Caché de patrones invalidada manualmente por admin:', req.user.email);
+    
+    res.json({
+      success: true,
+      message: 'Caché de patrones invalidada exitosamente. Los cambios se aplicarán en la próxima notificación procesada.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error al refrescar caché:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al refrescar caché',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   changeUserPlan,
@@ -1357,5 +1391,6 @@ module.exports = {
   deleteNotificationPattern,
   testNotificationPattern,
   getNotificationPatternStats,
-  getSpamFilters
+  getSpamFilters,
+  refreshPatternsCache
 };

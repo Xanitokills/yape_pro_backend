@@ -101,6 +101,13 @@ router.post('/notification-patterns', adminController.createNotificationPattern)
 router.post('/notification-patterns/test', adminController.testNotificationPattern);
 
 /**
+ * @route   POST /api/admin/notification-patterns/refresh-cache
+ * @desc    Forzar actualización del caché de patrones
+ * @access  Super Admin
+ */
+router.post('/notification-patterns/refresh-cache', adminController.refreshPatternsCache);
+
+/**
  * @route   PUT /api/admin/notification-patterns/:id
  * @desc    Actualizar patrón existente
  * @access  Super Admin
