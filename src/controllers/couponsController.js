@@ -446,7 +446,10 @@ const validateCoupon = async (req, res) => {
   try {
     const { code, storeId, amount } = req.body;
 
+    console.log('🎫 Validando cupón:', { code, storeId, amount });
+
     if (!code) {
+      console.log('❌ Falta código de cupón');
       return res.status(400).json({
         success: false,
         message: 'El código del cupón es requerido'
@@ -461,7 +464,12 @@ const validateCoupon = async (req, res) => {
       .eq('is_active', true)
       .single();
 
+    console.log('📋 Cupón encontrado:', coupon ? 'SÍ' : 'NO', fetchError ? `Error: ${fetchError.message}` : '');
+
+    console.log('📋 Cupón encontrado:', coupon ? 'SÍ' : 'NO', fetchError ? `Error: ${fetchError.message}` : '');
+
     if (fetchError || !coupon) {
+      console.log('❌ Cupón no encontrado o inactivo');
       return res.status(404).json({
         success: false,
         valid: false,
@@ -469,12 +477,21 @@ const validateCoupon = async (req, res) => {
       });
     }
 
+    console.log('📊 Datos del cupón:', {
+      code: coupon.code,
+      type: coupon.coupon_type,
+      used: `${coupon.used_count}/${coupon.max_uses}`,
+      validFrom: coupon.valid_from,
+      validUntil: coupon.valid_until
+    });
+
     // Validar fechas
     const now = new Date();
     const validFrom = new Date(coupon.valid_from);
     const validUntil = coupon.valid_until ? new Date(coupon.valid_until) : null;
 
     if (now < validFrom) {
+      console.log('❌ Cupón aún no es válido');
       return res.status(400).json({
         success: false,
         valid: false,
@@ -483,6 +500,7 @@ const validateCoupon = async (req, res) => {
     }
 
     if (validUntil && now > validUntil) {
+      console.log('❌ Cupón expirado');
       return res.status(400).json({
         success: false,
         valid: false,
@@ -492,6 +510,9 @@ const validateCoupon = async (req, res) => {
 
     // Validar usos
     if (coupon.used_count >= coupon.max_uses) {
+      console.log('❌ Cupón sin usos disponibles');
+      return res.status(400).json({
+      console.log('❌ Cupón sin usos disponibles');
       return res.status(400).json({
         success: false,
         valid: false,
@@ -501,6 +522,7 @@ const validateCoupon = async (req, res) => {
 
     // Validar tienda específica si aplica
     if (storeId && coupon.store_id && coupon.store_id !== storeId) {
+      console.log('❌ Cupón no válido para esta tienda');
       return res.status(400).json({
         success: false,
         valid: false,
@@ -510,12 +532,15 @@ const validateCoupon = async (req, res) => {
 
     // Validar compra mínima para cupones de descuento
     if (coupon.coupon_type === 'discount' && amount && amount < coupon.min_purchase_amount) {
+      console.log('❌ No cumple compra mínima');
       return res.status(400).json({
         success: false,
         valid: false,
         message: `Compra mínima requerida: S/ ${coupon.min_purchase_amount}`
       });
     }
+
+    console.log('✅ Cupón válido');
 
     // Calcular descuento si se proporciona amount y es cupón de descuento
     let response = {
