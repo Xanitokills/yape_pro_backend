@@ -1,6 +1,5 @@
 // src/controllers/couponsController.js
-const supabase = require('../config/supabase');
-const { v4: uuidv4 } = require('uuid');
+const { supabase } = require('../config/database');
 
 /**
  * Crear un nuevo cupón
