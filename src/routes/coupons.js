@@ -99,13 +99,11 @@ const validateCouponValidation = [
     .notEmpty()
     .withMessage('El código es requerido'),
   body('storeId')
-    .notEmpty()
-    .withMessage('El ID de tienda es requerido')
+    .optional()
     .isUUID()
     .withMessage('El ID de tienda debe ser un UUID válido'),
   body('amount')
-    .notEmpty()
-    .withMessage('El monto es requerido')
+    .optional()
     .isFloat({ min: 0.01 })
     .withMessage('El monto debe ser mayor a 0'),
   validate
