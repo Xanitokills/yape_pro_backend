@@ -11,36 +11,36 @@ const { getCountry } = require('../config/countries');
 const TEST_NOTIFICATIONS = {
   PE: {
     YAPE: [
-      'Recibiste S/125.50 de Juan Perez. Hora: 14:30',
-      'Te yaperon S/89.00 de Maria Lopez',
-      'Recibiste S/250.00 de Carlos Rodriguez - Pago pedido #123',
-      'Transferencia recibida: S/45.80 de Ana Garcia'
+      'Yape! Juan Perez te envió un pago por S/ 125.50',
+      'Maria Lopez te envió S/ 89.00',
+      'Recibiste S/ 250.00 de Carlos Rodriguez via yape',
+      'Yape! Ana Garcia te envió un pago por S/ 45.80'
     ],
     PLIN: [
-      'Recibiste S/180.00 de Pedro Sanchez',
-      'Te plinearon S/95.50 de Laura Martinez',
-      'Transferencia exitosa: S/320.00 de Jose Torres',
-      'Recibiste S/67.30 de Sofia Ramirez'
+      'Pedro Sanchez te ha plineado S/ 180.00',
+      'Laura Martinez te plineó S/ 95.50',
+      'Jose Torres te ha plineado S/ 320.00',
+      'Recibiste S/ 67.30 de Sofia Ramirez con Plin'
     ],
     TUNKI: [
-      'Recibiste S/150.00 de Miguel Flores',
-      'Te pagaron S/210.50 de Carmen Diaz',
-      'Transferencia recibida: S/88.00 de Ricardo Morales'
+      'Recibiste S/ 150.00 de Miguel Flores',
+      'Te pagaron S/ 210.50 de Carmen Diaz',
+      'Transferencia recibida: S/ 88.00 de Ricardo Morales'
     ],
     INTERBANK: [
-      'Abono a tu cuenta: S/500.00 de EMPRESA SAC',
-      'Transferencia recibida: S/1,250.00 de Proveedor XYZ',
-      'Deposito: S/380.50 en tu cuenta corriente'
+      'Abono a tu cuenta: S/ 500.00 de EMPRESA SAC',
+      'Transferencia recibida: S/ 1,250.00 de Proveedor XYZ',
+      'Deposito: S/ 380.50 en tu cuenta corriente'
     ],
     BBVA: [
-      'Transferencia recibida: S/450.00 de Cliente ABC',
-      'Abono: S/890.00 en tu cuenta de ahorros',
-      'Deposito exitoso: S/175.25'
+      'Transferencia recibida: S/ 450.00 de Cliente ABC',
+      'Abono: S/ 890.00 en tu cuenta de ahorros',
+      'Deposito exitoso: S/ 175.25'
     ],
     BCP: [
-      'Abono en tu cuenta: S/650.00',
-      'Transferencia recibida: S/1,100.00 de Empresa XYZ',
-      'Deposito: S/290.50'
+      'Abono en tu cuenta: S/ 650.00',
+      'Transferencia recibida: S/ 1,100.00 de Empresa XYZ',
+      'Deposito: S/ 290.50'
     ]
   },
   BO: {
@@ -181,6 +181,13 @@ async function generateTestNotification(country, wallet) {
     
     // Parsear la notificación
     const parsedResult = parse(randomNotification, country);
+    
+    console.log('🧪 Test notification parse result:', {
+      country,
+      wallet,
+      notification: randomNotification,
+      parsed: parsedResult
+    });
     
     // Obtener configuración del país
     const countryConfig = getCountry(country);
