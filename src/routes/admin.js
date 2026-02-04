@@ -169,4 +169,45 @@ router.post('/create-super-admin', adminController.createSuperAdmin);
  */
 router.get('/super-admins', adminController.listSuperAdmins);
 
+// ========================================
+// RUTAS PARA SISTEMA DE PRUEBAS DE NOTIFICACIONES
+// ========================================
+
+/**
+ * @route   GET /api/admin/test-notifications/options
+ * @desc    Obtener lista de países y billeteras disponibles para pruebas
+ * @access  Super Admin
+ */
+router.get('/test-notifications/options', adminController.getTestOptions);
+
+/**
+ * @route   GET /api/admin/test-notifications/status
+ * @desc    Obtener estado del sistema de parsers y patrones
+ * @access  Super Admin
+ */
+router.get('/test-notifications/status', adminController.getSystemStatus);
+
+/**
+ * @route   POST /api/admin/test-notifications/generate
+ * @desc    Generar una notificación de prueba específica
+ * @body    { country: 'PE', wallet: 'YAPE' }
+ * @access  Super Admin
+ */
+router.post('/test-notifications/generate', adminController.generateTestNotification);
+
+/**
+ * @route   GET /api/admin/test-notifications/country/:country
+ * @desc    Probar todas las billeteras de un país específico
+ * @param   country - Código del país (PE, BO, CL, etc.)
+ * @access  Super Admin
+ */
+router.get('/test-notifications/country/:country', adminController.testCountryNotifications);
+
+/**
+ * @route   GET /api/admin/test-notifications/all
+ * @desc    Ejecutar prueba completa de todo el sistema
+ * @access  Super Admin
+ */
+router.get('/test-notifications/all', adminController.testAllNotifications);
+
 module.exports = router;

@@ -6,6 +6,7 @@
 const { supabase } = require('../config/database');
 const subscriptionService = require('../services/subscriptionService');
 const { refreshCache } = require('../services/parsers/dynamicParser');
+const testNotificationService = require('../services/testNotificationService');
 
 /**
  * Obtener todos los usuarios con información de suscripción
@@ -1371,6 +1372,152 @@ const refreshPatternsCache = async (req, res) => {
   }
 };
 
+// ========================================
+// CONTROLADORES PARA SISTEMA DE PRUEBAS DE NOTIFICACIONES
+// ========================================
+
+/**
+ * Obtener opciones disponibles para pruebas
+ * GET /api/admin/test-notifications/options
+ */
+const getTestOptions = async (req, res) => {
+  try {
+    const options = testNotificationService.getAvailableTestOptions();
+    
+    res.json({
+      success: true,
+      data: options,
+      total: options.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en getTestOptions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener opciones de prueba',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Generar notificación de prueba específica
+ * POST /api/admin/test-notifications/generate
+ * Body: { country: 'PE', wallet: 'YAPE' }
+ */
+const generateTestNotification = async (req, res) => {
+  try {
+    const { country, wallet } = req.body;
+    
+    if (!country || !wallet) {
+      return res.status(400).json({
+        success: false,
+        error: 'País y billetera son requeridos'
+      });
+    }
+    
+    const result = await testNotificationService.generateTestNotification(
+      country.toUpperCase(),
+      wallet.toUpperCase()
+    );
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    console.log(`✅ Notificación de prueba generada: ${country}/${wallet} por ${req.user.email}`);
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('❌ Error en generateTestNotification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al generar notificación de prueba',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Probar todas las billeteras de un país
+ * GET /api/admin/test-notifications/country/:country
+ */
+const testCountryNotifications = async (req, res) => {
+  try {
+    const { country } = req.params;
+    
+    if (!country) {
+      return res.status(400).json({
+        success: false,
+        error: 'País es requerido'
+      });
+    }
+    
+    const result = await testNotificationService.testCountry(country.toUpperCase());
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    console.log(`✅ Prueba de país completada: ${country} por ${req.user.email}`);
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('❌ Error en testCountryNotifications:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al probar notificaciones del país',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Probar todo el sistema completo
+ * GET /api/admin/test-notifications/all
+ */
+const testAllNotifications = async (req, res) => {
+  try {
+    console.log(`🧪 Iniciando prueba completa del sistema por ${req.user.email}`);
+    
+    const result = await testNotificationService.testAllSystem();
+    
+    console.log(`✅ Prueba completa finalizada: ${result.summary?.successRate || 'N/A'} de éxito`);
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('❌ Error en testAllNotifications:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al probar todas las notificaciones',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Obtener estado del sistema de parsers y patrones
+ * GET /api/admin/test-notifications/status
+ */
+const getSystemStatus = async (req, res) => {
+  try {
+    const result = await testNotificationService.checkSystemStatus();
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('❌ Error en getSystemStatus:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener estado del sistema',
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   changeUserPlan,
@@ -1392,5 +1539,11 @@ module.exports = {
   testNotificationPattern,
   getNotificationPatternStats,
   getSpamFilters,
-  refreshPatternsCache
+  refreshPatternsCache,
+  // Sistema de pruebas de notificaciones
+  getTestOptions,
+  generateTestNotification,
+  testCountryNotifications,
+  testAllNotifications,
+  getSystemStatus
 };
