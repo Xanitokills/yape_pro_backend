@@ -9,8 +9,10 @@ const createCoupon = async (req, res) => {
     const {
       code,
       description,
+      couponType,
       discountType,
       discountValue,
+      transactionBonus,
       maxUses,
       storeId,
       validFrom,
@@ -21,35 +23,60 @@ const createCoupon = async (req, res) => {
     const userId = req.user.id;
 
     // Validaciones básicas
-    if (!code || !discountType || !discountValue || !maxUses) {
+    if (!code || !couponType || !maxUses) {
       return res.status(400).json({
         success: false,
-        message: 'Faltan campos requeridos: code, discountType, discountValue, maxUses'
+        message: 'Faltan campos requeridos: code, couponType, maxUses'
       });
     }
 
-    // Validar tipo de descuento
-    if (!['percentage', 'fixed'].includes(discountType)) {
+    // Validar tipo de cupón
+    if (!['discount', 'transactions'].includes(couponType)) {
       return res.status(400).json({
         success: false,
-        message: 'discountType debe ser "percentage" o "fixed"'
+        message: 'couponType debe ser "discount" o "transactions"'
       });
     }
 
-    // Validar valor de descuento
-    if (discountValue <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'discountValue debe ser mayor a 0'
-      });
+    // Validaciones específicas para cupones de descuento
+    if (couponType === 'discount') {
+      if (!discountType || !discountValue) {
+        return res.status(400).json({
+          success: false,
+          message: 'Para cupones de descuento se requiere discountType y discountValue'
+        });
+      }
+
+      if (!['percentage', 'fixed'].includes(discountType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'discountType debe ser "percentage" o "fixed"'
+        });
+      }
+
+      if (discountValue <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'discountValue debe ser mayor a 0'
+        });
+      }
+
+      if (discountType === 'percentage' && discountValue > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'El porcentaje no puede ser mayor a 100'
+        });
+      }
     }
 
-    // Validar porcentaje no mayor a 100
-    if (discountType === 'percentage' && discountValue > 100) {
-      return res.status(400).json({
-        success: false,
-        message: 'El porcentaje no puede ser mayor a 100'
-      });
+    // Validaciones específicas para cupones de transacciones
+    if (couponType === 'transactions') {
+      if (!transactionBonus || transactionBonus <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Para cupones de transacciones se requiere transactionBonus mayor a 0'
+        });
+      }
     }
 
     // Verificar si el código ya existe
@@ -91,21 +118,29 @@ const createCoupon = async (req, res) => {
     }
 
     // Crear cupón
+    const couponData = {
+      code: code.toUpperCase(),
+      description,
+      coupon_type: couponType,
+      max_uses: maxUses,
+      store_id: storeId || null,
+      valid_from: validFrom || new Date().toISOString(),
+      valid_until: validUntil,
+      min_purchase_amount: minPurchaseAmount || 0,
+      created_by: userId
+    };
+
+    // Agregar campos específicos según el tipo de cupón
+    if (couponType === 'discount') {
+      couponData.discount_type = discountType;
+      couponData.discount_value = discountValue;
+    } else if (couponType === 'transactions') {
+      couponData.transaction_bonus = transactionBonus;
+    }
+
     const { data: newCoupon, error } = await supabase
       .from('coupons')
-      .insert([{
-        code: code.toUpperCase(),
-        description,
-        discount_type: discountType,
-        discount_value: discountValue,
-        max_uses: maxUses,
-        store_id: storeId || null,
-        valid_from: validFrom || new Date().toISOString(),
-        valid_until: validUntil || null,
-        min_purchase_amount: minPurchaseAmount || 0,
-        created_by: userId,
-        is_active: true
-      }])
+      .insert([couponData])
       .select()
       .single();
 
@@ -257,8 +292,10 @@ const updateCoupon = async (req, res) => {
     
     const {
       description,
+      couponType,
       discountType,
       discountValue,
+      transactionBonus,
       maxUses,
       validFrom,
       validUntil,
@@ -293,8 +330,27 @@ const updateCoupon = async (req, res) => {
     // Construir objeto de actualización
     const updateData = {};
     if (description !== undefined) updateData.description = description;
-    if (discountType !== undefined) updateData.discount_type = discountType;
-    if (discountValue !== undefined) updateData.discount_value = discountValue;
+    if (couponType !== undefined) {
+      updateData.coupon_type = couponType;
+      
+      // Limpiar campos según el tipo
+      if (couponType === 'discount') {
+        if (discountType !== undefined) updateData.discount_type = discountType;
+        if (discountValue !== undefined) updateData.discount_value = discountValue;
+        updateData.transaction_bonus = null;
+      } else if (couponType === 'transactions') {
+        if (transactionBonus !== undefined) updateData.transaction_bonus = transactionBonus;
+        updateData.discount_type = null;
+        updateData.discount_value = null;
+        updateData.min_purchase_amount = 0;
+      }
+    } else {
+      // Si no se cambia el tipo, actualizar campos individuales
+      if (discountType !== undefined) updateData.discount_type = discountType;
+      if (discountValue !== undefined) updateData.discount_value = discountValue;
+      if (transactionBonus !== undefined) updateData.transaction_bonus = transactionBonus;
+    }
+    
     if (maxUses !== undefined) updateData.max_uses = maxUses;
     if (validFrom !== undefined) updateData.valid_from = validFrom;
     if (validUntil !== undefined) updateData.valid_until = validUntil;
