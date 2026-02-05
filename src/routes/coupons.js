@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const couponsController = require('../controllers/couponsController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const { body, query, param } = require('express-validator');
 const { validate } = require('../middleware/validator');
 
@@ -245,6 +245,7 @@ router.delete(
  */
 router.post(
   '/validate',
+  optionalAuth,
   validateCouponValidation,
   couponsController.validateCoupon
 );

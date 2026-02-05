@@ -444,7 +444,8 @@ const deleteCoupon = async (req, res) => {
  */
 const validateCoupon = async (req, res) => {
   try {
-    const { code, storeId, amount, userId } = req.body;
+    const { code, storeId, amount } = req.body;
+    const userId = req.user?.userId || null; // Extraído del token si existe
 
     console.log('🎫 Validando cupón:', { code, storeId, amount, userId });
 
