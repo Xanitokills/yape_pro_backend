@@ -609,7 +609,7 @@ const validateCoupon = async (req, res) => {
 const applyCoupon = async (req, res) => {
   try {
     const { code, storeId, amount, notificationId } = req.body;
-    const userId = req.user?.id || null;
+    const userId = req.user?.userId || null; // Extraído del token por optionalAuth
 
     // code y storeId son siempre requeridos
     if (!code || !storeId) {

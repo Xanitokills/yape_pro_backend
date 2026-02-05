@@ -257,6 +257,7 @@ router.post(
  */
 router.post(
   '/apply',
+  optionalAuth,
   applyCouponValidation,
   couponsController.applyCoupon
 );
