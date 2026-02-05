@@ -676,6 +676,17 @@ const applyCoupon = async (req, res) => {
             updated_at: new Date().toISOString()
           })
           .eq('store_id', storeId);
+      } else {
+        // Crear nuevo registro si no existe
+        console.log('📝 Creando nuevo registro en store_usage para tienda:', storeId);
+        await supabase
+          .from('store_usage')
+          .insert([{
+            store_id: storeId,
+            transaction_bonus: coupon.transaction_bonus,
+            transactions_count: 0,
+            usage_month: new Date().toISOString().slice(0, 7)
+          }]);
       }
 
       console.log('✅ Cupón de transacciones aplicado');
