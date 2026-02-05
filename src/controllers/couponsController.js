@@ -444,9 +444,9 @@ const deleteCoupon = async (req, res) => {
  */
 const validateCoupon = async (req, res) => {
   try {
-    const { code, storeId, amount } = req.body;
+    const { code, storeId, amount, userId } = req.body;
 
-    console.log('🎫 Validando cupón:', { code, storeId, amount });
+    console.log('🎫 Validando cupón:', { code, storeId, amount, userId });
 
     if (!code) {
       console.log('❌ Falta código de cupón');
@@ -518,25 +518,27 @@ const validateCoupon = async (req, res) => {
       });
     }
 
-    // 🔒 VALIDACIÓN CRÍTICA: Verificar si el usuario ya usó este cupón
-    const { data: previousUsage, error: usageCheckError } = await supabase
-      .from('coupon_usage')
-      .select('id, created_at')
-      .eq('coupon_id', coupon.id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // 🔒 VALIDACIÓN CRÍTICA: Verificar si el usuario ya usó este cupón (si se proporciona userId)
+    if (userId) {
+      const { data: previousUsage, error: usageCheckError } = await supabase
+        .from('coupon_usage')
+        .select('id, created_at')
+        .eq('coupon_id', coupon.id)
+        .eq('user_id', userId)
+        .maybeSingle();
 
-    if (usageCheckError) {
-      console.error('❌ Error verificando uso previo:', usageCheckError);
-    }
+      if (usageCheckError) {
+        console.error('❌ Error verificando uso previo:', usageCheckError);
+      }
 
-    if (previousUsage) {
-      console.log('❌ Usuario ya usó este cupón previamente');
-      return res.status(400).json({
-        success: false,
-        valid: false,
-        message: 'Ya has usado este cupón anteriormente'
-      });
+      if (previousUsage) {
+        console.log('❌ Usuario ya usó este cupón previamente');
+        return res.status(400).json({
+          success: false,
+          valid: false,
+          message: 'Ya has usado este cupón anteriormente'
+        });
+      }
     }
 
     // Validar tienda específica si aplica
