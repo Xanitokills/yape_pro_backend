@@ -120,8 +120,7 @@ const applyCouponValidation = [
     .isUUID()
     .withMessage('El ID de tienda debe ser un UUID válido'),
   body('amount')
-    .notEmpty()
-    .withMessage('El monto es requerido')
+    .optional()
     .isFloat({ min: 0.01 })
     .withMessage('El monto debe ser mayor a 0'),
   body('notificationId')
