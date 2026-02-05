@@ -523,7 +523,7 @@ const validateCoupon = async (req, res) => {
     if (userId) {
       const { data: previousUsage, error: usageCheckError } = await supabase
         .from('coupon_usage')
-        .select('id, created_at')
+        .select('id, used_at')
         .eq('coupon_id', coupon.id)
         .eq('user_id', userId)
         .maybeSingle();
@@ -655,7 +655,7 @@ const applyCoupon = async (req, res) => {
     // 🔒 VALIDACIÓN CRÍTICA: Verificar si el usuario ya usó este cupón
     const { data: previousUsage, error: usageCheckError } = await supabase
       .from('coupon_usage')
-      .select('id, created_at')
+      .select('id, used_at')
       .eq('coupon_id', coupon.id)
       .eq('user_id', userId)
       .maybeSingle();
