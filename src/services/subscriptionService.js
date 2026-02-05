@@ -302,11 +302,25 @@ class SubscriptionService {
       // Obtener límites del plan
       const subscription = await this.getUserSubscription(userId);
 
+      // Obtener bonus de transacciones de cupones desde store_usage
+      let transactionBonus = 0;
+      if (storeIds.length > 0) {
+        const { data: storeUsage } = await supabase
+          .from('store_usage')
+          .select('transaction_bonus')
+          .in('store_id', storeIds);
+
+        if (storeUsage && storeUsage.length > 0) {
+          transactionBonus = storeUsage.reduce((sum, su) => sum + (su.transaction_bonus || 0), 0);
+        }
+      }
+
       return {
         current: {
           transactions: usage?.transactions_count || 0,
           stores: storesCount || 0,
-          employees: employeesCount
+          employees: employeesCount,
+          transactionBonus: transactionBonus // Bonus de cupones
         },
         limits: {
           transactions: subscription.max_transactions_monthly,
