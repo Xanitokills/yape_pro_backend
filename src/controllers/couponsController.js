@@ -587,80 +587,178 @@ const applyCoupon = async (req, res) => {
     const { code, storeId, amount, notificationId } = req.body;
     const userId = req.user?.id || null;
 
-    if (!code || !storeId || !amount) {
+    // code y storeId son siempre requeridos
+    if (!code || !storeId) {
       return res.status(400).json({
         success: false,
-        message: 'Faltan campos requeridos: code, storeId, amount'
+        message: 'Faltan campos requeridos: code, storeId'
       });
     }
 
-    // Validar cupón primero
-    const { data: validationData, error: validationError } = await supabase
-      .rpc('is_coupon_valid', {
-        p_code: code.toUpperCase(),
-        p_store_id: storeId,
-        p_amount: amount
-      });
+    console.log('🎫 Aplicando cupón:', { code, storeId, amount, userId });
 
-    if (validationError) throw validationError;
-
-    const validation = validationData[0];
-
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        message: validation.message
-      });
-    }
-
-    // Calcular descuento
-    let discountAmount = 0;
-    if (validation.discount_type === 'percentage') {
-      discountAmount = (amount * validation.discount_value) / 100;
-    } else {
-      discountAmount = validation.discount_value;
-    }
-
-    const finalAmount = Math.max(0, amount - discountAmount);
-
-    // Registrar uso del cupón
-    const { data: usage, error: usageError } = await supabase
-      .from('coupon_usage')
-      .insert([{
-        coupon_id: validation.coupon_id,
-        notification_id: notificationId || null,
-        store_id: storeId,
-        user_id: userId,
-        original_amount: amount,
-        discount_amount: discountAmount,
-        final_amount: finalAmount
-      }])
-      .select()
+    // Buscar el cupón
+    const { data: coupon, error: couponError } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', code.toUpperCase())
+      .eq('is_active', true)
       .single();
 
-    if (usageError) throw usageError;
+    if (couponError || !coupon) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cupón no encontrado o inactivo'
+      });
+    }
 
-    // Incrementar contador de usos
-    const { error: updateError } = await supabase
-      .from('coupons')
-      .update({ used_count: supabase.raw('used_count + 1') })
-      .eq('id', validation.coupon_id);
+    console.log('📋 Tipo de cupón:', coupon.coupon_type);
 
-    if (updateError) throw updateError;
+    // Validar fechas
+    const now = new Date();
+    if (now < new Date(coupon.valid_from)) {
+      return res.status(400).json({ success: false, message: 'Este cupón aún no es válido' });
+    }
+    if (coupon.valid_until && now > new Date(coupon.valid_until)) {
+      return res.status(400).json({ success: false, message: 'Este cupón ha expirado' });
+    }
 
-    res.json({
-      success: true,
-      message: 'Cupón aplicado exitosamente',
-      data: {
-        usageId: usage.id,
-        couponId: validation.coupon_id,
-        originalAmount: amount,
-        discountAmount: parseFloat(discountAmount.toFixed(2)),
-        finalAmount: parseFloat(finalAmount.toFixed(2)),
-        discountType: validation.discount_type,
-        discountValue: validation.discount_value
+    // Validar usos
+    if (coupon.used_count >= coupon.max_uses) {
+      return res.status(400).json({ success: false, message: 'Este cupón ha alcanzado su límite de usos' });
+    }
+
+    // Validar tienda específica si aplica
+    if (coupon.store_id && coupon.store_id !== storeId) {
+      return res.status(400).json({ success: false, message: 'Este cupón no es válido para esta tienda' });
+    }
+
+    // Lógica específica según tipo de cupón
+    if (coupon.coupon_type === 'transactions') {
+      // Cupón de transacciones adicionales
+      console.log('🔄 Aplicando cupón de transacciones:', coupon.transaction_bonus);
+
+      // Registrar uso del cupón
+      const { data: usage, error: usageError } = await supabase
+        .from('coupon_usage')
+        .insert([{
+          coupon_id: coupon.id,
+          notification_id: notificationId || null,
+          store_id: storeId,
+          user_id: userId,
+          coupon_type: 'transactions',
+          transactions_added: coupon.transaction_bonus
+        }])
+        .select()
+        .single();
+
+      if (usageError) throw usageError;
+
+      // Incrementar contador de usos
+      await supabase
+        .from('coupons')
+        .update({ used_count: coupon.used_count + 1 })
+        .eq('id', coupon.id);
+
+      // Actualizar transacciones de la tienda (agregar bonus)
+      const { data: currentUsage } = await supabase
+        .from('store_usage')
+        .select('*')
+        .eq('store_id', storeId)
+        .single();
+
+      if (currentUsage) {
+        // Incrementar el bonus de transacciones
+        await supabase
+          .from('store_usage')
+          .update({ 
+            transaction_bonus: (currentUsage.transaction_bonus || 0) + coupon.transaction_bonus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('store_id', storeId);
       }
-    });
+
+      console.log('✅ Cupón de transacciones aplicado');
+
+      return res.json({
+        success: true,
+        message: `¡Cupón aplicado! +${coupon.transaction_bonus} transacciones adicionales`,
+        data: {
+          usageId: usage.id,
+          couponId: coupon.id,
+          couponType: 'transactions',
+          transactionsAdded: coupon.transaction_bonus
+        }
+      });
+
+    } else {
+      // Cupón de descuento - requiere amount
+      if (!amount || amount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'El monto es requerido para cupones de descuento'
+        });
+      }
+
+      // Validar compra mínima
+      if (amount < coupon.min_purchase_amount) {
+        return res.status(400).json({
+          success: false,
+          message: `Compra mínima requerida: S/ ${coupon.min_purchase_amount}`
+        });
+      }
+
+      // Calcular descuento
+      let discountAmount = 0;
+      if (coupon.discount_type === 'percentage') {
+        discountAmount = (amount * coupon.discount_value) / 100;
+      } else {
+        discountAmount = coupon.discount_value;
+      }
+
+      const finalAmount = Math.max(0, amount - discountAmount);
+
+      // Registrar uso del cupón
+      const { data: usage, error: usageError } = await supabase
+        .from('coupon_usage')
+        .insert([{
+          coupon_id: coupon.id,
+          notification_id: notificationId || null,
+          store_id: storeId,
+          user_id: userId,
+          coupon_type: 'discount',
+          original_amount: amount,
+          discount_amount: discountAmount,
+          final_amount: finalAmount
+        }])
+        .select()
+        .single();
+
+      if (usageError) throw usageError;
+
+      // Incrementar contador de usos
+      await supabase
+        .from('coupons')
+        .update({ used_count: coupon.used_count + 1 })
+        .eq('id', coupon.id);
+
+      console.log('✅ Cupón de descuento aplicado');
+
+      return res.json({
+        success: true,
+        message: 'Cupón aplicado exitosamente',
+        data: {
+          usageId: usage.id,
+          couponId: coupon.id,
+          couponType: 'discount',
+          originalAmount: amount,
+          discountAmount: parseFloat(discountAmount.toFixed(2)),
+          finalAmount: parseFloat(finalAmount.toFixed(2)),
+          discountType: coupon.discount_type,
+          discountValue: coupon.discount_value
+        }
+      });
+    }
 
   } catch (error) {
     console.error('Error applying coupon:', error);
