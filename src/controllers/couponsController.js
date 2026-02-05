@@ -518,6 +518,27 @@ const validateCoupon = async (req, res) => {
       });
     }
 
+    // 🔒 VALIDACIÓN CRÍTICA: Verificar si el usuario ya usó este cupón
+    const { data: previousUsage, error: usageCheckError } = await supabase
+      .from('coupon_usage')
+      .select('id, created_at')
+      .eq('coupon_id', coupon.id)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (usageCheckError) {
+      console.error('❌ Error verificando uso previo:', usageCheckError);
+    }
+
+    if (previousUsage) {
+      console.log('❌ Usuario ya usó este cupón previamente');
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        message: 'Ya has usado este cupón anteriormente'
+      });
+    }
+
     // Validar tienda específica si aplica
     if (storeId && coupon.store_id && coupon.store_id !== storeId) {
       console.log('❌ Cupón no válido para esta tienda');
@@ -626,6 +647,26 @@ const applyCoupon = async (req, res) => {
     // Validar usos
     if (coupon.used_count >= coupon.max_uses) {
       return res.status(400).json({ success: false, message: 'Este cupón ha alcanzado su límite de usos' });
+    }
+
+    // 🔒 VALIDACIÓN CRÍTICA: Verificar si el usuario ya usó este cupón
+    const { data: previousUsage, error: usageCheckError } = await supabase
+      .from('coupon_usage')
+      .select('id, created_at')
+      .eq('coupon_id', coupon.id)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (usageCheckError) {
+      console.error('❌ Error verificando uso previo en apply:', usageCheckError);
+    }
+
+    if (previousUsage) {
+      console.log('❌ Usuario ya usó este cupón previamente (apply)');
+      return res.status(400).json({
+        success: false,
+        message: 'Ya has usado este cupón anteriormente'
+      });
     }
 
     // Validar tienda específica si aplica
